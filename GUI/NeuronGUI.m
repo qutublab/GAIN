@@ -50,8 +50,12 @@ classdef NeuronGUI < handle
             end
         end
         function ngui=NeuronGUI(varargin)
-            addpath('..')
-            
+%             addpath('..')
+        p = mfilename('fullpath');
+        indices = strfind(p,filesep);
+        parent = p(1:indices(end-1));
+        addpath(parent)
+        
             ngui.nip=NeuronImageProcessor; %create and store the image processor obj
             if nargin>0
                 status = ngui.nip.readParametersFile(varargin{1})
