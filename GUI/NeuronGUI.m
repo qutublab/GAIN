@@ -50,7 +50,7 @@ classdef NeuronGUI < handle
             end
         end
         function ngui=NeuronGUI(varargin)
-            addpath('NeuronImageProcessor5')
+            addpath('..')
             
             ngui.nip=NeuronImageProcessor; %create and store the image processor obj
             if nargin>0
