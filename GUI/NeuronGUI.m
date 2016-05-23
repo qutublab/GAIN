@@ -54,7 +54,7 @@ classdef NeuronGUI < handle
         p = mfilename('fullpath');
         indices = strfind(p,filesep);
         parent = p(1:indices(end-1));
-        addpath(parent)
+        addpath(parent) %add the GAIN directory into the path
         
             ngui.nip=NeuronImageProcessor; %create and store the image processor obj
             if nargin>0
