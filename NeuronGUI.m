@@ -138,6 +138,7 @@ classdef NeuronGUI < handle
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','red','FontSize',12,'FontWeight', 'bold')
+                   
                 case NIPState.ResegmentedNeurites
                     cnm = ngui.nip.getSecondConnectedNeuriteMask();
                     unm = ngui.nip.getSecondUnconnectedNeuriteMask();
@@ -149,6 +150,18 @@ classdef NeuronGUI < handle
                     %rgb = addborder(rgb, ngui.Single, [0, 0, 1]);
                     %rgb = addborder(rgb, ngui.Small, [1, 0, 1]);
                     %rgb = addborder(rgb, CellMask, [1, 0, 0]);
+                    rgb = addborder(I, ngui.ocbm, [1, 0, 0]);
+                    rgb = addborder(rgb, cnm, [0, 1, 0]);
+                    rgb = addborder(rgb, unm, [1, 1, 0]);
+                    figure(ngui.getHandle);
+                    imshow(rgb)
+                    text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','red','FontSize',12,'FontWeight', 'bold')
+                    
+                 case NIPState.ResegmentedNeuriteEdge  %3rd Neurite Segmentation - added on 6/17/16
+                    cnm = ngui.nip.getThirdConnectedNeuriteMask();
+                    unm = ngui.nip.getThirdUnconnectedNeuriteMask();
+                    %Call 'getThirdNeuriteMask' too? We didn't call it in the 2nd Neurite Segmentation
+                    I = ngui.nip.getCellImage();
                     rgb = addborder(I, ngui.ocbm, [1, 0, 0]);
                     rgb = addborder(rgb, cnm, [0, 1, 0]);
                     rgb = addborder(rgb, unm, [1, 1, 0]);
