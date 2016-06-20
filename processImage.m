@@ -1,20 +1,22 @@
-function nip = processImage(fileName)
-
+function nip = processImage()
+fileNameCA = strcat('/home/bl6/NeuronImages/GUI/NeuronGUI4b/ImagesNoScaleBars/', ...
+    {'paramopt-tuj11.tif', 'paramopt-tuj12.tif', 'paramopt-tuj13.tif', ...
+    'paramopt-tuj14190.tif', 'paramopt-tuj14192.tif', ...
+    'paramopt-tuj14194.tif', 'paramopt-tuj14198.tif'});
+fileName = fileNameCA{1};
+%fileName = '/home/bl6/GitHub/CalibrationModel/combined1.tif';
 p = Parameters();
+
+% paramFileName = '/home/bl6/GitHub/GAIN-master/tuj11params.txt';
+% status = p.readFromFile(paramFileName);
+% if ~isempty(status)
+%     error('[processImage] Unable to read parameters in file %s', paramFileName)
+% end
+
+p.initialize2();
 
 p.fileName = fileName;
 
-% Set GAIN parameters
-p.dapiThreshFactor1 = 1;
-p.dapiThreshFactor2 = 1;
-p.nucleusOpenDiskRadius = 3;
-p.areaToConvexHullRatio = 0.95;
-p.medianNucleusAdjustmentFactor = 1;
-p.median2MinimumNucleusAreaRatio = 2;
-p.tujThreshFactor1 = 1;
-p.tujThreshFactor2 = 1;
-p.neuriteRemovalDiskRadius = 5;
-p.tujClosingSquareSide = 3;
 
 
 
@@ -55,11 +57,118 @@ end
 % Add directory to prefix
 prefix = [outputDir, filesep, prefix0];
 
-
-%p.tujClosingSquareSide = 7;
 nip.processImage(p);
-nbdArr = nip.getCellBodyData();
+%nip.processImage(p, 13);
+%nip.processImage(p, 12);
 
+
+% % 1 Read Images
+% N0 = nip.getNucleusImage();
+ C0 = nip.getCellImage();
+% 
+% % 2 First Nucleus Segmentation
+% N1 = nip.getFirstNucleusMask();
+% 
+% % 3 Second Nucleus Segmentation
+% N2 = nip.getSecondNucleusMask();
+% 
+% % 4 Open Nucleus Mask
+% % 5 Identify Nucleus Clusters
+% % 6 Calculate Mean Nucleus Area
+% % 7 Calculate Minimum Nucleus Area
+% 
+% % 8 Segment Cell Bodies
+% C1 =  nip.getFirstCellMask();
+% 
+% % 9 Isolate Cell Bodies
+ C2 = nip.getOpenedCellBodyMask();
+% C3 = nip.getFirstNeuriteMask();
+% 
+% % 10 Resegment for Neurites
+% 
+% C4 = nip.getSecondNeuriteMask();
+ ECB = nip.getExtendedCellBodyMask();
+ NE = nip.getNeuriteExtensions();
+% 
+% % 11 Resegment Neurites from Edges
+% 
+ C5 = nip.getThirdNeuriteMask();
+% 
+% % 12 Close Neurite mask
+% 
+% C6 = nip.getClosedNeuriteMask();
+% C6c = nip.getClosedConnectedNeuriteMask();
+% C6u = nip.getClosedUnconnectedNeuriteMask();
+% 
+% 
+% % 13 Skeletonize Neurites
+% 
+% %CS = nip.getConnectedNeuriteSkeleton();
+% %US = nip.getUnconnectedNeuriteSkeleton();
+
+r = C0;
+cellBodyBrdr = (C2 & ~imerode(C2, true(3))) | (ECB & ~imerode(ECB, true(3)));
+% C6b = C6 & ~NE;
+% neuriteBrdr = C6b & ~imerode(C6b, true(5));
+C5b = C5 & ~NE;
+neuriteBrdr = C5b & ~imerode(C5b, true(3));
+neBrdr = NE & ~imerode(NE, true(3));
+r(cellBodyBrdr | neuriteBrdr | neBrdr) = 0;
+g = r; b = r;
+r(cellBodyBrdr) = 1;
+g(neuriteBrdr) = 1;
+b(neBrdr) = 1;
+
+%figure, imshow(cat(3, r, g, b));
+%return;
+
+
+I = nip.getCellImage();
+D = nip.getNucleusImage();
+
+imwrite(I, strcat(prefix,'-tuj.tif'), 'tif', 'Compression', 'none');
+imwrite(D, strcat(prefix,'-dapi.tif'), 'tif', 'Compression', 'none');
+
+B = nip.getOpenedCellBodyMask();
+B2 = nip.getExtendedCellBodyMask();
+imwrite(B, [prefix,'-cellbody.tif'], 'tif', 'Compression', 'none');
+imwrite(B2, [prefix,'-extendedcellbody.tif'], 'tif', 'Compression', 'none');
+
+neuriteExtensions = nip.getNeuriteExtensions();
+imwrite(neuriteExtensions, [prefix, '-extensions.tif'], 'tif', 'Compression', 'none');
+
+N3 = nip.getThirdNeuriteMask();
+imwrite(N3, [prefix,'-thirdneuritemask.tif'], 'tif', 'Compression', 'none');
+
+
+
+connectedSkel = nip.getConnectedNeuriteSkeleton();
+unconnectedSkel = nip.getUnconnectedNeuriteSkeleton();
+imwrite(unconnectedSkel, strcat(prefix,'-unconnected.tif'), 'tif', 'Compression', 'none');
+imwrite(connectedSkel, strcat(prefix,'-connected.tif'), 'tif', 'Compression', 'none');
+
+B = nip.getCellBodyAllLabeled();
+
+dlmwrite(strcat(prefix,'-cellbodylabel.txt'), B);
+
+
+BBorder = makeBorder(B > 0);
+
+longPathSkel = false(size(connectedSkel));
+shortPathSkel = false(size(connectedSkel));
+for i = 1:numel(nbdArr)
+   nbd = nbdArr(i);
+   longPathSkel = addPaths(longPathSkel, nbd.longPaths);
+   shortPathSkel = addPaths(shortPathSkel, nbd.shortPaths);
+end
+
+imwrite(longPathSkel, strcat(prefix,'-longPathSkel.tif'), 'tif', 'Compression', 'none');
+imwrite(shortPathSkel, strcat(prefix,'-shortPathSkel.tif'), 'tif', 'Compression', 'none');
+
+createFigure3(outputDir, prefix);
+createFigure9(outputDir, prefix);
+
+nbdArr = nip.getCellBodyData();
 resultsFileName = strcat(prefix, '-results.csv');
 [fid message] = fopen(resultsFileName, 'w');
 if ~isempty(message)
@@ -91,40 +200,6 @@ end
 fclose(fid);
 
 fprintf('Wrote file %s\n', resultsFileName);
-
-I = nip.getCellImage();
-D = nip.getNucleusImage();
-
-imwrite(I, strcat(prefix,'-tuj.tif'), 'tif', 'Compression', 'none');
-imwrite(D, strcat(prefix,'-dapi.tif'), 'tif', 'Compression', 'none');
-
-
-
-
-connectedSkel = nip.getConnectedNeuriteSkeleton();
-unconnectedSkel = nip.getUnconnectedNeuriteSkeleton();
-imwrite(unconnectedSkel, strcat(prefix,'-unconnected.tif'), 'tif', 'Compression', 'none');
-imwrite(connectedSkel, strcat(prefix,'-connected.tif'), 'tif', 'Compression', 'none');
-
-B = nip.getCellBodyAllLabeled();
-
-dlmwrite(strcat(prefix,'-cellbodylabel.txt'), B);
-
-
-BBorder = makeBorder(B > 0);
-
-longPathSkel = false(size(connectedSkel));
-shortPathSkel = false(size(connectedSkel));
-for i = 1:numel(nbdArr)
-   nbd = nbdArr(i);
-   longPathSkel = addPaths(longPathSkel, nbd.longPaths);
-   shortPathSkel = addPaths(shortPathSkel, nbd.shortPaths);
-end
-
-imwrite(longPathSkel, strcat(prefix,'-longPathSkel.tif'), 'tif', 'Compression', 'none');
-imwrite(shortPathSkel, strcat(prefix,'-shortPathSkel.tif'), 'tif', 'Compression', 'none');
-
-createFigure(outputDir, prefix);
 
 end
 

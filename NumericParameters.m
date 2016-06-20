@@ -11,6 +11,7 @@ classdef NumericParameters < handle
         tujThreshFactor1 = []
         neuriteRemovalDiskRadius = []   % Disk size for imopen to remove neurites
         tujThreshFactor2 = []
+        tujThreshFactor3 = []
         tujClosingSquareSide = []       % Size of square structuring element for imclose
  
         
@@ -35,6 +36,7 @@ classdef NumericParameters < handle
                     'median2MinimumNucleusAreaRatio', NumericSubtype.POSITIVE,...
                     'tujThreshFactor1', NumericSubtype.POSITIVE,...
                     'tujThreshFactor2', NumericSubtype.POSITIVE,...
+                    'tujThreshFactor3', NumericSubtype.POSITIVE,...
                     'neuriteRemovalDiskRadius', NumericSubtype.POSITIVE_INTEGER,...
                     'tujClosingSquareSide', NumericSubtype.POSITIVE_INTEGER...
                     );
@@ -91,6 +93,7 @@ classdef NumericParameters < handle
             np.median2MinimumNucleusAreaRatio = 2;
             np.tujThreshFactor1 = 1;
             np.tujThreshFactor2 = 1;
+            np.tujThreshFactor3 = 1.5;
             np.neuriteRemovalDiskRadius = 5;
             np.tujClosingSquareSide = 3;
         end
@@ -100,6 +103,7 @@ classdef NumericParameters < handle
             np.tujThreshFactor1 = 0.996921;
             np.neuriteRemovalDiskRadius = 4.896013;
             np.tujThreshFactor2 = 0.969891;
+            np.tujThreshFactor3 = 1.5;   % Parameter added after optimzation was done
             np.tujClosingSquareSide = 3.020864;
             np.dapiThreshFactor1 = 1.013925 ;
             np.dapiThreshFactor2 = 1.036532;
@@ -258,6 +262,7 @@ classdef NumericParameters < handle
             str = sprintf('%s,tujClosingSquareSide=%d', str, p.tujClosingSquareSide);
             str = sprintf('%s,tujThreshFactor1=%f', str, p.tujThreshFactor1);
             str = sprintf('%s,tujThreshFactor2=%f', str, p.tujThreshFactor2);
+            str = sprintf('%s,tujThreshFactor3=%f', str, p.tujThreshFactor3);
             str = sprintf('%s,dapiThreshFactor1=%f', str, p.dapiThreshFactor1);
             str = sprintf('%s,dapiThreshFactor2=%f', str, p.dapiThreshFactor2);
             str = sprintf('%s,median2MinimumNucleusAreaRatio=%f', str, p.median2MinimumNucleusAreaRatio);

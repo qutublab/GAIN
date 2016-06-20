@@ -10,7 +10,16 @@
 % neuritesInsideHalo
 
 
-function extensions = extendNeurites(neuriteMask, cellBodyMask, extendedCellBodyMask, dilationSide)
+function extensions = extendNeurites(nip, neuriteMask, cellBodyMask, extendedCellBodyMask, dilationSide)
+
+
+% brdr = (cellBodyMask & ~imerode(cellBodyMask, true(3))) | (extendedCellBodyMask & ~imerode(extendedCellBodyMask, true(3)));
+% r = nip.getCellImage();
+% r(brdr | neuriteMask) = 0;
+% g = r; b = r;
+% r(brdr) = 1;
+% g(neuriteMask) = 1;
+% figure, imshow(cat(3, r, g, b))
 
 % figure, imshow(double(cat(3, cellBodyMask, neuriteMask, extendedCellBodyMask & ~cellBodyMask)));
 % title('red: cell body,  green: neurite,  blue: extended cell body');
@@ -61,10 +70,12 @@ sourceNeurites = sourceNeurites & ~cellBodyNeurites;
 % figure, imshow(double(cat(3, extendedCellBodyMask, neuriteMask&~sourceNeurites, sourceNeurites)));
 % title('red: extended cell body,  green: neurites,  blue: source neurites');
 
+
 % Use just the border pixels
 sourceNeurites = sourceNeurites & ~imerode(sourceNeurites, true(3));
 
-
+% b(sourceNeurites) = 1;
+% figure, imshow(cat(3, r, g, b));
 
 % Identify neurite sections at the edge and inside the extended cell body mask
 neuritesAtECB = neuriteMask & imdilate(extendedCellBodyMask, true(3));
@@ -91,10 +102,15 @@ neuriteFringe = neuritesAtECB & ~neuritesInsideMask;
 [fringeLabels numFringeLabels] = bwlabel(sourceNeurites);
 impliedNeurites = false(size(neuriteMask));
 
+
+
 % fringeExtent maps neurite fringe to area of its extent
 fringeExtent = zeros(numFringeLabels, 1);
 for i = 1:numFringeLabels
+    
     fringeMask = fringeLabels == i;
+    
+  
     
     extent = imreconstruct(fringeMask, neuriteMask);
     extentArea = sum(double(extent(:)));
@@ -106,19 +122,38 @@ for i = 1:numFringeLabels
     r1 = fringeR(idx);
     c1 = fringeC(idx);
     
-    
     % Find the extended cell body mask adjacent to the neurite fringe
     ecbmFringe = labeledECBMFringe(fringeMask);
-    ecbmLabel = ecbmFringe(1);
+%     ecbmLabel = ecbmFringe(1);
+    k = find(ecbmFringe);
+    if isempty(k)
+        % Neurite is not on fringe so ignore it
+        ecbmLabel = 0;
+    else
+        ecbmLabel = ecbmFringe(k(1));
+    end
+    
+%    if i == 22
+%%         b(cellBodyInsideNeuriteBorders) = 1;
+%        b(fringeMask) = 1;
+%        figure, imshow(cat(3, r, g, b));
+%        sum(double(fringeMask(:)))
+%        ecbmFringe
+%        figure, imshow(fringeMask)
+%    end
+    
+
     
     % Find the cell body point inside the extended cell body that is
     % closest to the fringe midpoint
     cellBodyBordersInECBM = cellBodyInsideNeuriteBorders & (labeledECBM == ecbmLabel);
     if any(cellBodyBordersInECBM(:))
+        
         [I2 J2] = find(cellBodyBordersInECBM); % Border pixels of cell body
         [~, idx] = closest(r1, c1, I2, J2);
         r2 = I2(idx);
         c2 = J2(idx);
+        
         % Draw a line between (and exclusive of) the points including
         % (r1, c1) and (r2, c2); hence the end points touch neither the
         % neurite nor the cell body.
