@@ -1,22 +1,22 @@
-% Uses images created by processImage.m
+% Uses images created by processImage.m to create Figure 9
 
-function createFigure()
-% dirName = '/home/bl6/NeuronImages/GUI/NeuronGUI4b/ExampleResults';
-dirName = '/home/bl6/GitHub/GAIN-master/ExampleResults';
-tujFile = strcat(dirName, '/paramopt-tuj11-tuj.tif');
-dapiFile = strcat(dirName, '/paramopt-tuj11-dapi.tif');
-cellLabelFile = strcat(dirName, '/paramopt-tuj11-cellbodylabel.txt');
-longPathFile = strcat(dirName, '/paramopt-tuj11-longPathSkel.tif');
-shortPathFile = strcat(dirName, '/paramopt-tuj11-shortPathSkel.tif');
-unconnectedFile = strcat(dirName, '/paramopt-tuj11-unconnected.tif');
-connectedFile = strcat(dirName, '/paramopt-tuj11-connected.tif');
+function createFigure(dirName, prefix)
 
 outputFile = [dirName, filesep, 'output.tif'];
+
+tujFile = [prefix, '-tuj.tif'];
+dapiFile = [prefix, '-dapi.tif'];
+cellLabelFile = [prefix, '-cellbodylabel.txt'];
+longPathFile = [prefix, '-longPathSkel.tif'];
+shortPathFile = [prefix, '-shortPathSkel.tif'];
+unconnectedFile = [prefix, '-unconnected.tif'];
+connectedFile = [prefix, '-connected.tif'];
 
 T = mat2gray(imread(tujFile));
 r = T;
 g = T;
 b = T;
+
 
 % Skeleton of neurites connected to cell bodies
 C = imread(connectedFile);
@@ -54,11 +54,12 @@ for i = 1:numLabels
     [R C] = find(M);
     centroidRow = sum(R(:)) / numel(R);
     centroidCol = sum(C(:)) / numel(C);
-    text(centroidCol, centroidRow, letterLabel(i), 'Color', [1 0 1]);
+%     text(centroidCol, centroidRow, letterLabel(i), 'Color', [1 0 1]);
+    text(centroidCol, centroidRow, letterLabel(i), 'Color', [1 0.5 1], 'FontSize', 16, 'FontWeight', 'bold');
 end
 % Use saveas to include text in image file
-% saveas(gcf, outputFile);
-% close(gcf);
+saveas(gcf, outputFile);
+close(gcf);
 % saveas includes a white border; remove it
 I = mat2gray(imread(outputFile));
 NW = I(:, :, 1) ~= 1 | I(:, :, 2) ~= 1 & I(:, :, 3) ~= 1;
@@ -69,8 +70,8 @@ bottomRow = nonWhiteRows(end);
 leftColumn = nonWhiteCols(1);
 rightColumn = nonWhiteCols(end);
 I = I(topRow:bottomRow, leftColumn:rightColumn, :);
-% imwrite(I, outputFile);
-% fprintf('Wrote file %s\n', outputFile);
+imwrite(I, outputFile);
+fprintf('Wrote file %s\n', outputFile);
 end
 
 function B = makeBorder(M)
@@ -78,5 +79,5 @@ B = M & ~imerode(M, true(3));
 end
 
 function M = thicken(M);
-% M = imdilate(M, true(2));
+M = imdilate(M, true(2));
 end

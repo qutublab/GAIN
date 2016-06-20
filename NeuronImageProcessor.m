@@ -38,6 +38,9 @@ classdef NeuronImageProcessor < handle
         cellBodyDataArr
         openedCellBodyMask
         extendedCellBodyMask
+        gradientMag
+        firstEdges
+        secondEdges
         firstNeuriteMask
         firstConnectedNeuriteMask
         firstUnconnectedNeuriteMask
@@ -49,7 +52,9 @@ classdef NeuronImageProcessor < handle
         secondUnconnectedNeuriteMask
         neuriteExtensions
         originalNeurites
-        
+        thirdNeuriteMask
+        thirdConnectedNeuriteMask
+        thirdUnconnectedNeuriteMask
 %         connectedNeuriteMask
 %         unconnectedNeuriteMask
         closedNeuriteMask
@@ -116,16 +121,21 @@ classdef NeuronImageProcessor < handle
             writeOutput(nip, fileName, outputDir);
         end
         
-        function processImage(nip, parameters)
+        function processImage(nip, parameters, steps)
             nip.parameters = parameters;
             nip.processParameterUpdates = false;
             nip.state = NIPState.Ready;
-            while nip.state ~= NIPState.Done
+            stepCount = 0;
+            if nargin <= 2
+                steps = Inf;
+            end
+            while nip.state ~= NIPState.Done & stepCount < steps
                 status = nip.next();
                 fprintf('State=%s\n', char(nip.getState()));
                 if ~isempty(status)
                     error(status);
                 end
+                stepCount = stepCount + 1;
             end
         end
         
@@ -178,6 +188,8 @@ classdef NeuronImageProcessor < handle
                 case NIPState.SeparatedBodiesFromNeurites
                     status = nip.resegmentNeurites();
                 case NIPState.ResegmentedNeurites
+                    status = nip.resegmentNeuriteEdges();
+                case NIPState.ResegmentedNeuriteEdges
                     status = nip.closeNeuriteMask();
                 case NIPState.ClosedNeuriteMask
                     status = nip.skeletonizeNeurites();
@@ -410,6 +422,7 @@ classdef NeuronImageProcessor < handle
             nip.cellThresh1 = thresh1;
             nip.firstCellMask = im2bw(nip.cellImage, thresh1);
 %             nip.firstCellMask = imfill(nip.firstCellMask, 'holes');
+
         end
 
         function status = isolateCellBodies(nip)
@@ -428,36 +441,67 @@ classdef NeuronImageProcessor < handle
 
         function status = resegmentNeurites(nip)
             status = '';
+
+            % Use thresholding on the background to find more signal
             thresh2 = graythresh(nip.cellImage(~nip.firstCellMask));
             thresh2 = min(1, thresh2 * nip.parameters.tujThreshFactor2);
             nip.cellThresh2 = thresh2;
-% %            nip.cellBodyNeuriteMask = im2bw(nip.cellImage, thresh2);
-%             nip.secondCellMask = im2bw(nip.cellImage, thresh2) | nip.firstCellMask;
-%             nip.neuriteMask =  nip.secondCellMask & ~nip.openedCellBodyMask;
-%             nip.connectedNeuriteMask = imreconstruct(nip.openedCellBodyMask, nip.secondCellMask) & nip.neuriteMask;
-%             nip.unconnectedNeuriteMask = nip.neuriteMask & ~nip.connectedNeuriteMask;
+
             nip.secondCellMask = im2bw(nip.cellImage, thresh2) | nip.firstCellMask;
+            
+            % Use imopen to remove neurites leaving extended cell bodies
             se = strel('disk', nip.parameters.neuriteRemovalDiskRadius, 0);
             nip.extendedCellBodyMask = imopen(nip.secondCellMask, se);
+            % Isolate neurites
             nip.secondNeuriteMask = (nip.secondCellMask & ~nip.extendedCellBodyMask) | nip.firstNeuriteMask;
             
+
+            % Use edge detection as an additional way to find neurites
+            nip.gradientMag = imgradient(nip.cellImage);
+%            gmagThresh1 = min(1, graythresh(nip.gradientMag) * nip.parameters.tujThreshFactor2);
+            gmagThresh1 = graythresh(nip.gradientMag);
+            edges1 = im2bw(nip.gradientMag, gmagThresh1);
             
-            nip.neuriteExtensions = extendNeurites(nip.secondNeuriteMask,...
+            nip.firstEdges = edges1;
+            
+            % Remove edges that fall within a cell body
+%             edges1 = edges1 & ~nip.openedCellBodyMask;
+            % Fill-in neurite edges
+            edgeObjects = imclose(edges1, strel('disk', round(nip.parameters.neuriteRemovalDiskRadius / 2), 0));
+            % Some edges are from the cell body and may be just outside the
+            % already determined cell body.  When finding neurite edges,
+            % these cell body edges can be (partially) eliminated by using
+            % imopen on the combination of the edge objects and the already
+            % determined cell body.
+            edgeCellBodies = imopen(edgeObjects | nip.openedCellBodyMask, strel('disk', nip.parameters.neuriteRemovalDiskRadius, 0));
+            edgeNeurites = edgeObjects & ~edgeCellBodies;
+            
+%             nip.secondNeuriteMask = nip.secondNeuriteMask | edgeNeurites;
+            
+            
+%             nip.secondNeuriteMask = ((nip.secondCellMask | sobelNeurites) & ~nip.extendedCellBodyMask) | nip.firstNeuriteMask;
+%             nip.secondNeuriteMask = ((nip.secondCellMask | edgeNeurites) & ~nip.extendedCellBodyMask) | nip.firstNeuriteMask;
+%            figure, imshow(double(cat(3,sobelNeurites, sobelNeurites,nip.secondNeuriteMask)));
+           
+
+
+            
+
+
+            nip.neuriteExtensions = extendNeurites(nip, nip.secondNeuriteMask,...
                 nip.openedCellBodyMask, nip.extendedCellBodyMask,...
                 round(nip.parameters.neuriteRemovalDiskRadius/2));
 
-            
-%             rgb = drawExtendedNeurites(nip, neuriteExtensions);
-%             rgb = rgb(700:830,1:180,:);
-%             imwrite(rgb, 'ExtendedNeurites-2.tif', 'tif', 'Compression', 'none');
-%             fprintf('Wrote file ExtendedNeurites-2.tif\n');
-
+% r = nip.cellImage;
+% brdr = nip.extendedCellBodyMask & ~imerode(nip.extendedCellBodyMask, true(3));
+% r(nip.openedCellBodyMask | brdr | nip.secondNeuriteMask | nip.neuriteExtensions) = 0;
+% g = r; b = r;
+% r(nip.openedCellBodyMask | brdr) = 1;
+% g(nip.secondNeuriteMask) = 1;
+% b(nip.neuriteExtensions) = 1;
+% figure, imshow(cat(3, r, g, b));
             
             nip.originalNeurites = nip.secondNeuriteMask;
-%             c = neuriteExtensions & nip.secondNeuriteMask;
-%             error(any(c(:)), 'Extension overlap');
-            
-
 
 
             nip.secondNeuriteMask = nip.secondNeuriteMask | nip.neuriteExtensions;
@@ -467,30 +511,68 @@ classdef NeuronImageProcessor < handle
             nip.secondUnconnectedNeuriteMask = nip.secondNeuriteMask & ~nip.secondConnectedNeuriteMask;
             
             
-            
-
-%             neuriteExtensions = extendNeurites2(nip.openedCellBodyMask, nip.extendedCellBodyMask, nip.cellImage);
-%             
-%             cellBodyBorder = nip.openedCellBodyMask & ~imerode(nip.openedCellBodyMask, true(3));
-%             extendedCellBodyBorder = nip.extendedCellBodyMask & ~imerode(nip.extendedCellBodyMask, true(3));
-%             originalNeuriteBorder = originalNeurites & ~imerode(originalNeurites, true(3));
-%             neuriteBorder = nip.secondNeuriteMask & ~imerode(nip.secondNeuriteMask, true(3));
-%             extensionsBorder = neuriteExtensions & ~imerode(neuriteExtensions, true(3));
-%             allBorders = cellBodyBorder | extendedCellBodyBorder | neuriteBorder | extensionsBorder;
-%             r = nip.cellImage;
-%             g = nip.cellImage;
-%             b = nip.cellImage;
-%             r(allBorders) = 0;
-%             g(allBorders) = 0;
-%             b(allBorders) = 0;
-%             bodyBorder = (cellBodyBorder | extendedCellBodyBorder) & ~(originalNeuriteBorder | extensionsBorder);
-%             r(bodyBorder) = 1;
-%             g(originalNeuriteBorder) = 1;
-%             b(extensionsBorder) = 1;
-%             rgb = cat(3, r, g, b);
-            
+    
         end
 
+        
+        function status = resegmentNeuriteEdges(nip)
+            status = '';
+            % Edge background does not include cell bodies found by thresholding
+            backgroundPixels = nip.gradientMag(~(nip.firstEdges | nip.openedCellBodyMask)); 
+            thresh2 = nip.parameters.tujThreshFactor3 * graythresh(backgroundPixels);
+            nip.secondEdges = im2bw(nip.gradientMag, thresh2);
+            % Ignore edges that are within a cell body
+            %edges2 = nip.secondEdges & ~nip.openedCellBodyMask; 
+            
+            % Fill-in edges to reconstruct neurites between edges
+            filledEdges2 = imclose(nip.secondEdges, strel('disk', floor(nip.parameters.neuriteRemovalDiskRadius / 2), 0));
+            
+            % Extended cell bodies were found by applying a second
+            % thresholding operation.  However not all of these extended
+            % cell bodies contain cell bodies found by the first
+            % thresholding operation.  Identify only those extended cell
+            % bodies that contain an actual cell body.
+            occupiedECB = imreconstruct(nip.openedCellBodyMask, nip.extendedCellBodyMask);
+            
+%             edgeNeurites2 = filledEdges2 & ~occupiedECB;
+            
+            cellBody = imopen(occupiedECB | filledEdges2, strel('disk', nip.parameters.neuriteRemovalDiskRadius, 0));
+            edgeNeurites2 = filledEdges2 & ~cellBody;
+            
+            % Separate cell bodies from neurites; identify only neurites
+            % outside of extended cell body because the lower threshold
+            % finds undesirable objects near cell bodies.
+            
+            
+            
+%             bodies2 = imopen(filledEdges2 | nip.extendedCellBodyMask, strel('disk', nip.parameters.neuriteRemovalDiskRadius, 0));
+            
+            % Isolate neurites
+%             sobelNeurites2 = filledEdges2 & ~bodies2;  
+            
+%             nip.thirdNeuriteMask = sobelNeurites2 | nip.secondNeuriteMask;
+            nip.thirdNeuriteMask = edgeNeurites2 | nip.secondNeuriteMask;
+            
+            nip.thirdConnectedNeuriteMask = imreconstruct(imdilate(nip.openedCellBodyMask, true(3)), nip.thirdNeuriteMask);
+            nip.thirdUnconnectedNeuriteMask = nip.thirdNeuriteMask & ~nip.thirdConnectedNeuriteMask;
+            
+            
+%             occupiedECB = imreconstruct(nip.openedCellBodyMask, nip.extendedCellBodyMask);
+% %             b = imopen(filledEdges2 | occupiedECB, strel('disk', nip.parameters.neuriteRemovalDiskRadius, 0));
+%             n = filledEdges2 & ~occupiedECB;
+%             masks = nip.firstNeuriteMask | nip.secondNeuriteMask | n;
+%             ci = nip.cellImage;
+%             ci(masks) = 0;
+%             r = ci;
+%             g = ci;
+%             b = ci;
+%             r(nip.firstNeuriteMask) = 1;
+%             g(nip.secondNeuriteMask & ~nip.firstNeuriteMask) = 1;
+%             b(n & ~(nip.secondNeuriteMask | nip.firstNeuriteMask)) = 1;
+%             figure, imshow(cat(3, r, g, b));
+
+        end
+        
         function status = secondNeuriteResegmentation(nip)
            status = '';
            background = nip.cellImage(~nip.secondCellMask);
@@ -518,7 +600,7 @@ classdef NeuronImageProcessor < handle
             status = '';
             trueSquare = true(nip.parameters.tujClosingSquareSide);
 %            nip.closedNeuriteMask = imclose(nip.cellBodyNeuriteMask, trueSquare);
-           nip.closedNeuriteMask = imclose(nip.secondNeuriteMask, trueSquare);
+           nip.closedNeuriteMask = imclose(nip.thirdNeuriteMask, trueSquare);
 %nip.closedNeuriteMask = imclose(nip.secondNeuriteMask, strel('disk', nip.parameters.tujClosingSquareSide, 0));
 % Do two closings
 nip.closedNeuriteMask = imclose(nip.closedNeuriteMask, strel('disk', nip.parameters.tujClosingSquareSide, 0));
@@ -648,6 +730,18 @@ nip.closedNeuriteMask = imclose(nip.closedNeuriteMask, strel('disk', nip.paramet
         
         function I = getSecondUnconnectedNeuriteMask(nip)
             I = nip.secondUnconnectedNeuriteMask;
+        end
+        
+        function I = getThirdNeuriteMask(nip)
+            I = nip.thirdNeuriteMask;
+        end
+        
+        function I = getThirdConnectedNeuriteMask(nip)
+            I = nip.thirdConnectedNeuriteMask;
+        end
+        
+        function I = getThirdUnconnectedNeuriteMask(nip)
+            I = nip.thirdUnconnectedNeuriteMask;
         end
         
         function I = getClosedNeuriteMask(nip)
