@@ -105,7 +105,7 @@ classdef NeuronGUI < handle
                 case NIPState.SegmentedCells
                     I = ngui.nip.getCellImage();
                     CellMask = ngui.nip.getFirstCellMask();
-                    rgb = addborder(I, CellMask, [1, 0, 0]);
+                    rgb = addBorder(I, CellMask, [1, 0, 0]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                 case NIPState.SeparatedBodiesFromNeurites
@@ -131,10 +131,10 @@ classdef NeuronGUI < handle
                     ngui.PCell = reshape(P,2, numel(P)/2);
                     
                     I = ngui.nip.getCellImage();
-                    rgb = addborder(I, ngui.ocbm, [1, 0, 0]);
-                    %                   rgb = addborder(rgb, fnm, [0, 0, 1]);
+                    rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
+                    %                   rgb = addBorder(rgb, fnm, [0, 0, 1]);
                     %                   rgb = addorder(rgb, fcnm, [0, 1, 0]);
-                    %                   rgb = addborder(rbg, funm, [1, 1, 0]);
+                    %                   rgb = addBorder(rbg, funm, [1, 1, 0]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','red','FontSize',12,'FontWeight', 'bold')
@@ -146,24 +146,24 @@ classdef NeuronGUI < handle
                     
                     %also have ngui.nip.getSecondNeuriteMask
                     
-                    %rgb = addborder(I, ngui.Cluster, [0, 1, 1]);
-                    %rgb = addborder(rgb, ngui.Single, [0, 0, 1]);
-                    %rgb = addborder(rgb, ngui.Small, [1, 0, 1]);
-                    %rgb = addborder(rgb, CellMask, [1, 0, 0]);
-                    rgb = addborder(I, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb, cnm, [0, 1, 0]);
-                    rgb = addborder(rgb, unm, [1, 1, 0]);
+                    %rgb = addBorder(I, ngui.Cluster, [0, 1, 1]);
+                    %rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
+                    %rgb = addBorder(rgb, ngui.Small, [1, 0, 1]);
+                    %rgb = addBorder(rgb, CellMask, [1, 0, 0]);
+                    rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb, cnm, [0, 1, 0]);
+                    rgb = addBorder(rgb, unm, [1, 1, 0]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','red','FontSize',12,'FontWeight', 'bold')
                     
-                 case NIPState.ResegmentedNeuriteEdge  %3rd Neurite Segmentation - added on 6/17/16
+                 case NIPState.ResegmentedNeuriteEdges  %3rd Neurite Segmentation - added on 6/17/16
                     cnm = ngui.nip.getThirdConnectedNeuriteMask();
                     unm = ngui.nip.getThirdUnconnectedNeuriteMask();
                     I = ngui.nip.getCellImage();
-                    rgb = addborder(I, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb, cnm, [0, 1, 0]);
-                    rgb = addborder(rgb, unm, [1, 1, 0]);
+                    rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb, cnm, [0, 1, 0]);
+                    rgb = addBorder(rgb, unm, [1, 1, 0]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','red','FontSize',12,'FontWeight', 'bold')
@@ -174,13 +174,13 @@ classdef NeuronGUI < handle
                     
                     %Also have ngui.nip.getClosedNeuriteMask
                     
-                    %rgb = addborder(I, ngui.Cluster, [0, 1, 1]);
-                    %rgb = addborder(rgb, ngui.Single, [0, 0, 1]);
-                    %rgb = addborder(rgb, ngui.Small, [1, 0, 1]);
-                    %rgb = addborder(rgb, CellMask, [1, 0, 0]);
-                    rgb = addborder(I, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb, ngui.ccnm, [0, 1, 0]);
-                    rgb = addborder(rgb, ngui.cunm, [1, 1, 0]);
+                    %rgb = addBorder(I, ngui.Cluster, [0, 1, 1]);
+                    %rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
+                    %rgb = addBorder(rgb, ngui.Small, [1, 0, 1]);
+                    %rgb = addBorder(rgb, CellMask, [1, 0, 0]);
+                    rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
+                    rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','red','FontSize',12,'FontWeight', 'bold')
@@ -205,28 +205,28 @@ classdef NeuronGUI < handle
                     I=ngui.nip.getFirstNucleusMask();
                     J=ngui.nip.getNucleusImage();
                     %Need to show stuff from before too
-                    rgb = addborder(J, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb, ngui.ccnm, [0, 1, 0]);
-                    rgb = addborder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addborder(rgb, I, [0, 0, 1]);
+                    rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
+                    rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
+                    rgb = addBorder(rgb, I, [0, 0, 1]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                 case NIPState.SegmentedNucleusImageTwice
                     I=ngui.nip.getSecondNucleusMask();
                     J=ngui.nip.getNucleusImage();
-                    rgb = addborder(J, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb, ngui.ccnm, [0, 1, 0]);
-                    rgb = addborder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addborder(rgb, I, [0, 0, 1]);
+                    rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
+                    rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
+                    rgb = addBorder(rgb, I, [0, 0, 1]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                 case NIPState.OpenedNucleusMask;
                     I=ngui.nip.getOpenedNucleusMask;
                     J=ngui.nip.getNucleusImage();
-                    rgb = addborder(J, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb, ngui.ccnm, [0, 1, 0]);
-                    rgb = addborder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addborder(rgb, I, [0, 0, 1]);
+                    rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
+                    rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
+                    rgb = addBorder(rgb, I, [0, 0, 1]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                 case NIPState.IdentifiedNucleusClusters
@@ -242,11 +242,11 @@ classdef NeuronGUI < handle
                         end
                     end
                     J=ngui.nip.getNucleusImage();
-                    rgb = addborder(J, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb, ngui.ccnm, [0, 1, 0]);
-                    rgb = addborder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addborder(rgb, ngui.Cluster, [0, 1, 1]);
-                    rgb = addborder(rgb, ngui.Single, [0, 0, 1]);
+                    rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
+                    rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
+                    rgb = addBorder(rgb, ngui.Cluster, [0, 1, 1]);
+                    rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                 case NIPState.CalculatedNominalMeanNucleusArea
@@ -268,11 +268,11 @@ classdef NeuronGUI < handle
                     NCluster = reshape(N, numel(N), 1);
                     ngui.NClusterText = cellstr(num2str(NCluster));
                     ngui.PCluster = reshape(P,2, numel(P)/2);
-                    rgb = addborder(J, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb, ngui.ccnm, [0, 1, 0]);
-                    rgb = addborder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addborder(rgb, ngui.Cluster, [0, 1, 1]);
-                    rgb = addborder(rgb, ngui.Single, [0, 0, 1]);
+                    rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
+                    rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
+                    rgb = addBorder(rgb, ngui.Cluster, [0, 1, 1]);
+                    rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCluster(2,:),ngui.PCluster(1,:),ngui.NClusterText,'Color','cyan','FontSize',8,'FontWeight', 'bold', 'BackgroundColor', [.4, .4, .4])
@@ -287,12 +287,12 @@ classdef NeuronGUI < handle
                         end
                     end
                     J=ngui.nip.getNucleusImage();
-                    rgb = addborder(J, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb, ngui.ccnm, [0, 1, 0]);
-                    rgb = addborder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addborder(rgb, ngui.Cluster, [0, 1, 1]);
-                    rgb = addborder(rgb, ngui.Single, [0, 0, 1]);
-                    rgb = addborder(rgb, ngui.Small, [1, 0, 1]);
+                    rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
+                    rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
+                    rgb = addBorder(rgb, ngui.Cluster, [0, 1, 1]);
+                    rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
+                    rgb = addBorder(rgb, ngui.Small, [1, 0, 1]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCluster(2,:),ngui.PCluster(1,:),ngui.NClusterText,'Color',[0, 0.5, 0.5],'FontSize',12,'FontWeight', 'bold')
@@ -301,12 +301,12 @@ classdef NeuronGUI < handle
                     cns = ngui.nip.getConnectedNeuriteSkeleton();
                     uns = ngui.nip.getUnconnectedNeuriteSkeleton();
                     I = ngui.nip.getCellImage();
-                    rgb = addborder(I, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb, ngui.ccnm, [0, 1, 0]);
-                    rgb = addborder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addborder(rgb, ngui.ocbm, [1, 0, 0]);
-                    rgb = addborder(rgb,cns,[0, 1, 0]);
-                    rgb = addborder(rgb,uns,[1, 1, 0]);
+                    rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
+                    rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
+                    rgb = addBorder(rgb, ngui.ocbm, [1, 0, 0]);
+                    rgb = addBorder(rgb,cns,[0, 1, 0]);
+                    rgb = addBorder(rgb,uns,[1, 1, 0]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','red','FontSize',12,'FontWeight', 'bold')
