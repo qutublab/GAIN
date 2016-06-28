@@ -33,6 +33,8 @@ classdef NeuronGUI < handle
         instructionTextbox
         flag
         parent
+        batchInput
+        batchOutput
     end
     
     
@@ -56,7 +58,7 @@ classdef NeuronGUI < handle
             indices = strfind(p,filesep);
             ngui.parent = p(1:indices(end)); %find GUI's parent dir(GAIN folder)
             addpath(ngui.parent) %add the GAIN directory into the path
-                        
+            
             ngui.nip=NeuronImageProcessor; %create and store the image processor obj
             if nargin>0
                 status = ngui.nip.readParametersFile(varargin{1})
@@ -65,6 +67,7 @@ classdef NeuronGUI < handle
                 end
             end
             ngui.parameters=ngui.nip.getParameters;
+            p = ngui.parameters(12)
             [editBoxes nextActionTextbox,instructionTextbox, h, Handles]=createControlPanel(ngui.parameters, ngui.nip.getActionName,@ngui.forwardButtonCallback, @ngui.backButtonCallback, @ngui.saveButtonCallback, @ngui.quitButtonCallback, @ngui.batchButtonCallback, @ngui.parameterButtonCallback)
             ngui.editBoxes=editBoxes;
             ngui.nextActionTextbox=nextActionTextbox;
@@ -138,7 +141,7 @@ classdef NeuronGUI < handle
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','red','FontSize',12,'FontWeight', 'bold')
-                   
+                    
                 case NIPState.ResegmentedNeurites
                     cnm = ngui.nip.getSecondConnectedNeuriteMask();
                     unm = ngui.nip.getSecondUnconnectedNeuriteMask();
@@ -157,7 +160,7 @@ classdef NeuronGUI < handle
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','red','FontSize',12,'FontWeight', 'bold')
                     
-                 case NIPState.ResegmentedNeuriteEdges  %3rd Neurite Segmentation - added on 6/17/16
+                case NIPState.ResegmentedNeuriteEdges  %3rd Neurite Segmentation - added on 6/17/16
                     cnm = ngui.nip.getThirdConnectedNeuriteMask();
                     unm = ngui.nip.getThirdUnconnectedNeuriteMask();
                     I = ngui.nip.getCellImage();
@@ -378,21 +381,36 @@ classdef NeuronGUI < handle
             uicontrol('Style', 'pushbutton', 'String', 'Output Directory',...
                 'Position', [0 350 100 25], 'Callback', {@ngui.outputButtonCallback, processButtonHandle});
             uicontrol('Style', 'pushbutton', 'String', 'Input Directory',...
-                'Position', [0 275 100 25], 'Callback', {@ngui.inputButtonCallback, processButtonHandle});
+                'Position', [0 260 100 25], 'Callback', {@ngui.inputButtonCallback, processButtonHandle});
             uicontrol('Style', 'pushbutton', 'String', 'Input Files',...
-                'Position', [0 225 100 25], 'Callback', {@ngui.inputFileButtonCallback, processButtonHandle});
+                'Position', [0 185 100 25], 'Callback', {@ngui.inputFileButtonCallback, processButtonHandle});
             controlPanelButtonHandle = uicontrol('Style', 'pushbutton', 'String', 'Back to Control Panel',...
                 'Position', [0 0 150 50], 'Callback', {@ngui.controlPanelButtonCallback});
+            uicontrol('Style','text',... % a sign between "input dir" and "input files" buttons
+                'units', 'pixels',...
+                'string','Or',...
+                'FontSize', 11, ...
+                'position', [35 225 30 20])
             
             ngui.flag = 0; %set the flag to be 0
             
-            filename = uicontrol('Style', 'edit', 'Units', 'pixels',...
+            ngui.batchOutput = uicontrol('Style', 'edit', 'String', ' ', 'Units', 'pixels',...
+                'Position', [110 350 400 25],'HorizontalAlignment','left', ...
+                'Max', 100, 'Enable', 'on');
+            jOutput=findjobj(ngui.batchOutput,'nomenu'); %get the UIScrollPane container
+            jOutput=jOutput.getComponent(0).getComponent(0);
+            set(jOutput,'Editable',0);
+            
+            ngui.batchInput = uicontrol('Style', 'edit', 'Units', 'pixels',...
                 'string', ' ', ...
-                'Position', [110 350 300 25],'HorizontalAlignment','right', ...
-                'Enable', 'off');
-            output = uicontrol('Style', 'edit', 'String', ' ', 'Units', 'pixels',...
-                'Position', [110 250 300 25],'HorizontalAlignment','right', ...
-                'Enable', 'off');
+                'Max', 100,...
+                'Position', [110 185 400 100],'HorizontalAlignment','left', ...
+                'Enable', 'on');%off 6/28
+            
+            jInput=findjobj(ngui.batchInput,'nomenu'); %get the UIScrollPane container
+            jInput=jInput.getComponent(0).getComponent(0);
+            set(jInput,'Editable',0);
+            
             %             uicontrol('Style', 'pushbutton', 'String', 'Parameters File',...
             %                 'Position', [0 450 100 25], 'Callback', @ngui.parameterButtonCallback);
             %             parametername = uicontrol('Style', 'text', 'Units', 'pixels',...
@@ -417,19 +435,47 @@ classdef NeuronGUI < handle
             
             ngui.flag = 1;%clicking the button changes the flag - which terminates the processing
             close(ngui.batch)   %close batch processing window
-            close(ngui.waitbar) %close the waitbar window
+%             if ishandle(ngui.waitbar), close(ngui.waitbar), end %close the waitbar window if it is open
+            close(ngui.waitbar)
             for k = 1:length(ngui.controlHandles)
                 set(ngui.controlHandles{k},'Enable','on')
             end
+        end  
+        
+        function outputButtonCallback(ngui, UIhandle, x, processButtonHandle)
+            ngui.dirout=uigetdir('*.*','Store Data');
+            set(ngui.batchOutput,'string', ngui.dirout);
+            %             output = uicontrol('Style', 'edit', 'Units', 'pixels',...
+            %                 'string', ngui.dirout, ...
+            %                 'Position', [110 350 300 25],'HorizontalAlignment','left', ...
+            %                 'Enable', 'off');
+            if ~isempty(ngui.dirout) && ischar(ngui.dirout) %matlab returns numerical 0 when nothing is selected
+                ngui.enableProcessOut = 'On';
+            else
+                ngui.enableProcessOut = 'Off';
+            end
+%             if ngui.dirout == 0, ngui.enableProcessOut = 'Off'; end %Click output  button but not select anything
+            %             ngui.enableProcessOut = 'On'; %do we need to check if ~isempty(ngui.dirin)??
+            if strcmp(ngui.enableProcessOut, 'On') && strcmp(ngui.enableProcessIn, 'On')
+                enableProcess = 'On';
+            else
+                enableProcess = 'Off';
+            end
+            set(processButtonHandle,'Enable',enableProcess);
         end
+        
         function inputButtonCallback(ngui, UIhandle, x, processButtonHandle)%get directory input
             ngui.dirin=uigetdir('*.*','Image File');
-            filename = uicontrol('Style', 'edit', 'Units', 'pixels',...
-                'string', ngui.dirin, ...
-                'Position', [110 250 300 25],'HorizontalAlignment','left', ...
-                'Enable', 'off');
-            if ~isempty(ngui.dirin)
+            %             filename = uicontrol('Style', 'edit', 'Units', 'pixels',...
+            %                 'string', ngui.dirin, ...
+            %                 'Position', [110 250 300 25],'HorizontalAlignment','left', ...
+            %                 'Enable', 'off');
+            set(ngui.batchInput, 'string', ngui.dirin)
+            
+            if ~isempty(ngui.dirin) && ischar(ngui.dirin) %matlab returns numerical 0 when nothing is selected
                 ngui.enableProcessIn = 'On';
+            else 
+                ngui.enableProcessIn = 'Off';
             end
             if strcmp(ngui.enableProcessOut, 'On') && strcmp(ngui.enableProcessIn, 'On')
                 enableProcess = 'On';
@@ -441,25 +487,28 @@ classdef NeuronGUI < handle
         
         function inputFileButtonCallback(ngui, UIhandle, x, processButtonHandle)%get files input
             [file,path]=uigetfile('*.*','Image File', 'MultiSelect','on');%same path for the files
-            file = cellstr(file); %convert char to cell
-            path = cellstr(path); %convert char to cell
-            ngui.filein = cell(1, length(file));
-            
-            for i = 1: length(file)
-                ngui.filein{i} = strcat(path,file{i});
+            %             file = cellstr(file); %convert char to cell %6/28
+            %             path = cellstr(path); %convert char to cell %6/28
+%             disp('===========================================================')
+%             class(file)
+%             file
+%             length(file)
+            if iscell(file) %if more then 1 file is selected (cell array)
+                ngui.filein = cell(1, length(file));
+                for i = 1: length(file)
+                    ngui.filein{i} = strcat(path,file{i});
+                end
+                fileNames = sprintf('%s\n',ngui.filein{:});%convert a cell of char vectors to a multi-line char vector
+            else       %if only one file is selected (a character vector)
+                ngui.filein = strcat(path,file);
+                fileNames = ngui.filein;
             end
-            filein = strcat(ngui.filein{1}, ', ', ngui.filein{2}, ', ', ngui.filein{3})
-            %             x = celldisp(filein)
-            %             class(x)
+            set(ngui.batchInput, 'string', fileNames)
             
-            %do we want to convert ngui.filein back to string so that we
-            %can put it into the textbox below??
-            filename = uicontrol('Style', 'edit', 'Units', 'pixels',...
-                'string', filein, ...
-                'Position', [110 250 300 25],'HorizontalAlignment','left', ...
-                'Enable', 'off');% display the file names
-            if ~isempty(ngui.dirin)
+            if ~isempty(ngui.filein)
                 ngui.enableProcessIn = 'On';
+            else 
+                ngui.enableProcessIn = 'Off';
             end
             if strcmp(ngui.enableProcessOut, 'On') && strcmp(ngui.enableProcessIn, 'On')
                 enableProcess = 'On';
@@ -477,33 +526,22 @@ classdef NeuronGUI < handle
                 error(ngui.altparam)
             end
             ngui.parameters=ngui.nip.getParameters;
-            [editBoxesnew] = updateControlPanel(ngui.parameters, ngui.h);
+            [editBoxesnew] = updateControlPanel(ngui.editBoxes, ngui.parameters, ngui.h);
             ngui.editBoxes=editBoxesnew;
         end
         
-        function outputButtonCallback(ngui, UIhandle, x, processButtonHandle)
-            ngui.dirout=uigetdir('*.*','Store Data');
-            output = uicontrol('Style', 'edit', 'Units', 'pixels',...
-                'string', ngui.dirout, ...
-                'Position', [110 350 300 25],'HorizontalAlignment','left', ...
-                'Enable', 'off');
-            ngui.enableProcessOut = 'On'; %do we need to check if ~isempty(ngui.dirin)??
-            if strcmp(ngui.enableProcessOut, 'On') && strcmp(ngui.enableProcessIn, 'On')
-                enableProcess = 'On';
-            else
-                enableProcess = 'Off';
-            end
-            set(processButtonHandle,'Enable',enableProcess);
-        end
-        
         function processButtonCallback(ngui, UIhandle, x)
-            ngui.dirin;
-            ngui.dirout;
-            list=dir(ngui.dirin);
-            namelist = cell(1,(length(list)-2));
-            for i = 1:length(namelist)
-                namelist{i} = list(i+2).name;
-                namelist{i} = strcat(ngui.dirin, filesep, namelist{i});
+            if ~isempty(ngui.dirin)  %if the input is a directory
+                list=dir(ngui.dirin); %get the list of the file names under the directory
+                namelist = cell(1,(length(list)-2));
+                for i = 1:length(namelist)
+                    namelist{i} = list(i+2).name;
+                    namelist{i} = strcat(ngui.dirin, filesep, namelist{i});
+                end
+            elseif ~isempty(ngui.filein) %if the input is files
+                namelist = ngui.filein;
+            else 
+                error('The input cannot be empty')
             end
             tElapsed = 600;%initial guess of the processing time for an image = 10 min
             currentWait = round(tElapsed*(length(namelist))/60,1);
