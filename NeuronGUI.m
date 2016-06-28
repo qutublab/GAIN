@@ -35,6 +35,7 @@ classdef NeuronGUI < handle
         parent
         batchInput
         batchOutput
+        hSlider
     end
     
     
@@ -68,8 +69,9 @@ classdef NeuronGUI < handle
             end
             ngui.parameters=ngui.nip.getParameters;
             p = ngui.parameters(12)
-            [editBoxes nextActionTextbox,instructionTextbox, h, Handles]=createControlPanel(ngui.parameters, ngui.nip.getActionName,@ngui.forwardButtonCallback, @ngui.backButtonCallback, @ngui.saveButtonCallback, @ngui.quitButtonCallback, @ngui.batchButtonCallback, @ngui.parameterButtonCallback)
+            [editBoxes nextActionTextbox,instructionTextbox, h, Handles, sliderHandles]=createControlPanel(ngui.parameters, ngui.nip.getActionName,@ngui.forwardButtonCallback, @ngui.backButtonCallback, @ngui.saveButtonCallback, @ngui.quitButtonCallback, @ngui.batchButtonCallback, @ngui.parameterButtonCallback, @ngui.sliderCallback, @ngui.editBoxCallback)
             ngui.editBoxes=editBoxes;
+            ngui.hSlider = sliderHandles;
             ngui.nextActionTextbox=nextActionTextbox;
             ngui.instructionTextbox = instructionTextbox;
             ngui.handle=[];
@@ -352,6 +354,9 @@ classdef NeuronGUI < handle
                     enbl='off';
                 end
                 set(ngui.editBoxes(i),'Enable',enbl);
+                if i>1
+                set(ngui.hSlider(i-1),'Enable',enbl);
+                end
             end
             
             %             Function for obtaining the zoomed X Y limiits for zoom
@@ -566,6 +571,24 @@ classdef NeuronGUI < handle
             ngui.nip.writeParametersFile(parameterData);
         end
         
+        function sliderCallback(ngui, UIhandle, x)
+            num = length(ngui.hSlider);%num of sliders
+            sliderValue = cell(1,num);
+            for k = 1:num
+            sliderValue{k} = num2str(get(ngui.hSlider(k),'Value'));
+            set(ngui.editBoxes(k+1),'String', sliderValue{k})
+            end
+        end
+        
+        function editBoxCallback(ngui, UIhandle, x)
+            num = length(ngui.hSlider);%num of sliders
+            textValue = zeros(1,num);
+            for k = 1:num
+                textValue(k) = str2num(get(ngui.editBoxes(k+1),'String'));
+                set(ngui.hSlider(k),'Value', textValue(k))
+            end
+            
+        end
         %         function
         %         end
     end
