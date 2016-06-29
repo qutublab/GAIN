@@ -358,7 +358,7 @@ classdef NeuronGUI < handle
                 end
                 set(ngui.editBoxes(i),'Enable',enbl);
                 if i>1
-                set(ngui.hSlider(i-1),'Enable',enbl);
+                    set(ngui.hSlider(i-1),'Enable',enbl);
                 end
             end
             
@@ -378,7 +378,9 @@ classdef NeuronGUI < handle
         end
         function quitButtonCallback(ngui,UIhandle, x)
             %             close all %need to check if that is sufficient
-            close(ngui.handle)%close the figure window
+            if ishandle(ngui.handle)
+                close(ngui.handle)%close the figure window
+            end
             close(ngui.hControlpanel)%close the control panel window
             
             rmpath(ngui.parent)   %remove the GAIN directory when the user quits the program
@@ -449,12 +451,12 @@ classdef NeuronGUI < handle
             
             ngui.flag = 1;%clicking the button changes the flag - which terminates the processing
             close(ngui.batch)   %close batch processing window
-%             if ishandle(ngui.waitbar), close(ngui.waitbar), end %close the waitbar window if it is open
+            %             if ishandle(ngui.waitbar), close(ngui.waitbar), end %close the waitbar window if it is open
             close(ngui.waitbar)
             for k = 1:length(ngui.controlHandles)
                 set(ngui.controlHandles{k},'Enable','on')
             end
-        end  
+        end
         
         function outputButtonCallback(ngui, UIhandle, x, processButtonHandle)
             ngui.dirout=uigetdir('*.*','Store Data');
@@ -468,7 +470,7 @@ classdef NeuronGUI < handle
             else
                 ngui.enableProcessOut = 'Off';
             end
-%             if ngui.dirout == 0, ngui.enableProcessOut = 'Off'; end %Click output  button but not select anything
+            %             if ngui.dirout == 0, ngui.enableProcessOut = 'Off'; end %Click output  button but not select anything
             %             ngui.enableProcessOut = 'On'; %do we need to check if ~isempty(ngui.dirin)??
             if strcmp(ngui.enableProcessOut, 'On') && strcmp(ngui.enableProcessIn, 'On')
                 enableProcess = 'On';
@@ -488,7 +490,7 @@ classdef NeuronGUI < handle
             
             if ~isempty(ngui.dirin) && ischar(ngui.dirin) %matlab returns numerical 0 when nothing is selected
                 ngui.enableProcessIn = 'On';
-            else 
+            else
                 ngui.enableProcessIn = 'Off';
             end
             if strcmp(ngui.enableProcessOut, 'On') && strcmp(ngui.enableProcessIn, 'On')
@@ -503,10 +505,10 @@ classdef NeuronGUI < handle
             [file,path]=uigetfile('*.*','Image File', 'MultiSelect','on');%same path for the files
             %             file = cellstr(file); %convert char to cell %6/28
             %             path = cellstr(path); %convert char to cell %6/28
-%             disp('===========================================================')
-%             class(file)
-%             file
-%             length(file)
+            %             disp('===========================================================')
+            %             class(file)
+            %             file
+            %             length(file)
             if iscell(file) %if more then 1 file is selected (cell array)
                 ngui.filein = cell(1, length(file));
                 for i = 1: length(file)
@@ -521,7 +523,7 @@ classdef NeuronGUI < handle
             
             if ~isempty(ngui.filein)
                 ngui.enableProcessIn = 'On';
-            else 
+            else
                 ngui.enableProcessIn = 'Off';
             end
             if strcmp(ngui.enableProcessOut, 'On') && strcmp(ngui.enableProcessIn, 'On')
@@ -555,7 +557,7 @@ classdef NeuronGUI < handle
                 end
             elseif ~isempty(ngui.filein) %if the input is files
                 namelist = ngui.filein;
-            else 
+            else
                 error('The input cannot be empty')
             end
             tElapsed = 600;%initial guess of the processing time for an image = 10 min
@@ -586,21 +588,21 @@ classdef NeuronGUI < handle
             num = length(ngui.hSlider);%num of sliders
             sliderValue = cell(1,num);
             for k = 1:num
-            sliderValue{k} = num2str(get(ngui.hSlider(k),'Value'));
-            set(ngui.editBoxes(k+1),'String', sliderValue{k})
+                sliderValue{k} = num2str(get(ngui.hSlider(k),'Value'));
+                set(ngui.editBoxes(k+1),'String', sliderValue{k})
             end
             
-%             %(2) Call NIP to perform processing at a specific step
-%             for i=1:numel(ngui.editBoxes);
-%                 valueString=get(ngui.editBoxes(i),'string');
-%                 ngui.parameters(i).value=valueString;
-%             end
-%             status=ngui.nip.next(ngui.parameters);
-%             updateUser(ngui,status);
+            %             %(2) Call NIP to perform processing at a specific step
+            %             for i=1:numel(ngui.editBoxes);
+            %                 valueString=get(ngui.editBoxes(i),'string');
+            %                 ngui.parameters(i).value=valueString;
+            %             end
+            %             status=ngui.nip.next(ngui.parameters);
+            %             updateUser(ngui,status);
             
-%             %(3) Call NIP to go back to the previous state
-%             status=ngui.nip.back();
-%             updateUser(ngui,status);
+            %             %(3) Call NIP to go back to the previous state
+            %             status=ngui.nip.back();
+            %             updateUser(ngui,status);
             
             
         end
