@@ -1,5 +1,5 @@
-function [edit_box nextActionTextbox,instructionTextbox, h,Handles,hSlider]=createControlPanel(oneParameterArr, buttonLabel,forwardCallbackHandle,backCallbackHandle, saveCallbackHandle, quitCallbackHandle, batchCallbackHandle, parameterCallbackHandle, sliderCallbackHandle,editBoxCallbackHandle)
-h=figure;
+function [edit_box nextActionTextbox,instructionTextbox, hControlPanel,Handles,hSlider]=createControlPanel(oneParameterArr, buttonLabel,forwardCallbackHandle,backCallbackHandle, saveCallbackHandle, quitCallbackHandle, batchCallbackHandle, parameterCallbackHandle, sliderCallbackHandle,editBoxCallbackHandle)
+hControlPanel=figure;
 leftMargin=10;
 bottomMargin=10;
 pushButtonWidth=130;
@@ -12,6 +12,7 @@ verticalSpace=20;  %spacing between edit boxes (originally 20) (6/27/16)   %10 6
 textBoxHeight=20;  
 textBoxWidth=200; % 250
 instructionBoxWidth=100; %instruciton for parameters
+buttonGap = 10; %the vertical gap between buttons
 totalwidth = leftMargin*2 + editBoxWidth + horizontalSpace + textBoxWidth + ...
              instructionBoxWidth;
 savepushButtonHandle=uicontrol('Style','pushbutton',...
@@ -24,7 +25,7 @@ batchpushButtonHandle=uicontrol('Style','pushbutton',...
     'string','Exit to Batch Processing',...
     'position',[leftMargin+pushButtonWidth+horizontalSpace bottomMargin pushButtonWidth pushButtonHeight],...
     'callback',batchCallbackHandle);
-bottom=bottomMargin+pushButtonHeight+verticalSpace;
+bottom=bottomMargin+pushButtonHeight+buttonGap;
 backpushButtonHandle=uicontrol('Style','pushbutton',...
     'units', 'pixels',... 
     'string', char(8592), 'FontSize', 24, ...%8592 - Unicode Dec(HTML)
@@ -71,18 +72,19 @@ backButtonName=uicontrol('Style','text',...
 bottom=bottom+pushButtonHeight+verticalSpace;
 
 for i=numel(oneParameterArr):-1:4
-    edit_box(i)=createEditBox(h,i,oneParameterArr(i),[leftMargin bottom editBoxWidth editBoxHeight],[leftMargin+editBoxWidth+horizontalSpace bottom textBoxWidth textBoxHeight],editBoxCallbackHandle);
-    hSlider(i-1) = createSlider(h,edit_box(i),[leftMargin bottom-18 editBoxWidth+horizontalSpace+textBoxWidth 15], sliderCallbackHandle);  
+    edit_box(i)=createEditBox(hControlPanel,i,oneParameterArr(i),[leftMargin bottom editBoxWidth editBoxHeight],[leftMargin+editBoxWidth+horizontalSpace bottom textBoxWidth textBoxHeight],editBoxCallbackHandle);
+    hSlider(i-1) = createSlider(hControlPanel,edit_box(i),[leftMargin bottom-18 editBoxWidth+horizontalSpace+textBoxWidth 15], sliderCallbackHandle);  
     bottom=bottom+(editBoxHeight+verticalSpace);
 end
 for i=3:-1:2
-    edit_box(i)=createEditBox(h,i,oneParameterArr(i),[leftMargin bottom editBoxWidth editBoxHeight],[leftMargin+editBoxWidth+horizontalSpace bottom textBoxWidth*1/2 textBoxHeight], editBoxCallbackHandle);
-    hSlider(i-1) = createSlider(h,edit_box(i),[leftMargin bottom-18 editBoxWidth+horizontalSpace+textBoxWidth 15], sliderCallbackHandle);
+    edit_box(i)=createEditBox(hControlPanel,i,oneParameterArr(i),[leftMargin bottom editBoxWidth editBoxHeight],[leftMargin+editBoxWidth+horizontalSpace bottom textBoxWidth*1/2 textBoxHeight], editBoxCallbackHandle);
+    hSlider(i-1) = createSlider(hControlPanel,edit_box(i),[leftMargin bottom-18 editBoxWidth+horizontalSpace+textBoxWidth 15], sliderCallbackHandle);
     bottom=bottom+(editBoxHeight+verticalSpace);
 end
+bottom = bottom - 10;
 for i= 1:-1:1
-    edit_box(i)=createEditBox(h,i,oneParameterArr(i),[leftMargin bottom fileNameBox editBoxHeight],[leftMargin+fileNameBox+horizontalSpace bottom textBoxWidth textBoxHeight]);
-    bottom=bottom+(editBoxHeight+verticalSpace);
+    edit_box(i)=createEditBox(hControlPanel,i,oneParameterArr(i),[leftMargin bottom fileNameBox editBoxHeight],[leftMargin+fileNameBox+horizontalSpace bottom textBoxWidth textBoxHeight]);
+    bottom=bottom+(editBoxHeight+buttonGap);
 end
 
 % %create a slider for the first parameter
@@ -109,6 +111,6 @@ parameterButtonHandle=uicontrol('Style','pushbutton',...
 
 
  
-set(h, 'Position', [100, 100, totalwidth, bottom+pushButtonHeight+verticalSpace]);
+set(hControlPanel, 'Position', [30, 40, totalwidth, bottom+pushButtonHeight+buttonGap]);
 Handles = {savepushButtonHandle,parameterButtonHandle,quitButtonHandle,backpushButtonHandle,pushButtonHandle,batchpushButtonHandle};    
 end
