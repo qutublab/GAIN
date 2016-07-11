@@ -61,8 +61,6 @@ classdef NeuronGUI < handle
                 'BackgroundColor','white',...
                 'units', 'normalized',...
                 'Position',[0.005,0.72,0.12,0.18]);
-%             disp('==================================================')
-%             ishandle(ngui.subPanel)
             ngui.legend = uicontrol('Parent', ngui.subPanel,...
                         'Style','text',... %instruction for each parameter
                         'units', 'normalized',...
@@ -93,7 +91,7 @@ classdef NeuronGUI < handle
                 end
             end
             ngui.parameters=ngui.nip.getParameters;
-            p = ngui.parameters(12)
+            p = ngui.parameters(12);
             [editBoxes, nextActionTextbox,instructionTextbox, controlpanelHandle, buttonHandles, sliderHandles]=createControlPanel(ngui.parameters, ngui.nip.getActionName,@ngui.forwardButtonCallback, @ngui.backButtonCallback, @ngui.saveButtonCallback, @ngui.quitButtonCallback, @ngui.batchButtonCallback, @ngui.parameterButtonCallback, @ngui.sliderCallback, @ngui.editBoxCallback);
             ngui.editBoxes=editBoxes;
             ngui.hSlider = sliderHandles;
@@ -105,16 +103,6 @@ classdef NeuronGUI < handle
             %hide the Figure Toolbar of the control panel window, name it,
             %and hide the number of the figure
             set(ngui.hControlpanel, 'menubar', 'none', 'name', 'Control Panel','numbertitle','off'); 
-            
-            %              disp('============================================') %test
-            %              ngui.controlHandles{1}.Position
-            %              set(ngui.controlHandles{1}, 'units', 'normalized')
-            %              ngui.controlHandles{1}.Position
-            %             window position
-            
-            %             ngui.hControlpanel.Position
-            %             set(ngui.hControlpanel, 'units','pixels')
-            %             ngui.hControlpanel.Position
         end
         function forwardButtonCallback(ngui,UIhandle,x)
             state=ngui.nip.getState();
@@ -159,13 +147,9 @@ classdef NeuronGUI < handle
                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
                     rgb = addBorder(rgb, I, [0, 0, 1]);
                     figure(ngui.getHandle());      
-%                     disp('==================================================')
-%                     ishandle(ngui.subPanel)
                     imshow(rgb)
                     figure(ngui.getHandle());%without this command, the subPanel will not be shown (?)
-%                     disp('==================================================')
-%                     ishandle(ngui.subPanel)
-%                     set(ngui.instructionTextbox, 'string', sprintf('blue - nuclei')) %instruction textbox on control panel
+%                    set(ngui.instructionTextbox, 'string', sprintf('blue - nuclei')) %instruction textbox on control panel
                     set(ngui.legend, 'String', sprintf('%s\n%s', 'Blue:', 'nuclei'), 'ForegroundColor', 'b')
                 case NIPState.SegmentedNucleusImageTwice
                     I=ngui.nip.getSecondNucleusMask();
@@ -292,9 +276,6 @@ classdef NeuronGUI < handle
                     
                     I = ngui.nip.getCellImage();
                     rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
-                    %                   rgb = addBorder(rgb, fnm, [0, 0, 1]);
-                    %                   rgb = addorder(rgb, fcnm, [0, 1, 0]);
-                    %                   rgb = addBorder(rbg, funm, [1, 1, 0]);
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','white','FontSize',12,'FontWeight', 'bold')
@@ -306,10 +287,6 @@ classdef NeuronGUI < handle
                     
                     %also have ngui.nip.getSecondNeuriteMask
                     
-                    %rgb = addBorder(I, ngui.Cluster, [0, 1, 1]);
-                    %rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
-                    %rgb = addBorder(rgb, ngui.Small, [1, 0, 1]);
-                    %rgb = addBorder(rgb, CellMask, [1, 0, 0]);
                     rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
                     rgb = addBorder(rgb, cnm, [0, 1, 0]);
                     rgb = addBorder(rgb, unm, [1, 1, 0]);
@@ -338,10 +315,6 @@ classdef NeuronGUI < handle
                     
                     %Also have ngui.nip.getClosedNeuriteMask
                     
-                    %rgb = addBorder(I, ngui.Cluster, [0, 1, 1]);
-                    %rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
-                    %rgb = addBorder(rgb, ngui.Small, [1, 0, 1]);
-                    %rgb = addBorder(rgb, CellMask, [1, 0, 0]);
                     rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
                     rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
@@ -351,19 +324,6 @@ classdef NeuronGUI < handle
                     [FileName, PathName]=uiputfile('*.*','Save parameters as');
                     parameterData=strcat(PathName, FileName)
                     ngui.nip.writeParametersFile(parameterData)
-                    %             case NIPState.ReadNucleusImage
-                    %                  I=ngui.nip.getNucleusImage();
-                    %                  f = figure(ngui.getHandle());
-                    %                  PFig = get(f, 'Position');
-                    %                  PFig(1) = PFig(1) + 210;
-                    %                  set(f,'Position', PFig);
-                    %                  imshow(I)
-                    
-                    %                  Preserve the zoomed frame
-                    %                  newlimits = [];
-                    %                  zoomfig = zoom;
-                    %                  set(zoomfig,'ActionPostCallback',@updateLimits); %doing this after zoom
-                    %                  set(zoomfig,'Enable','on'); %on
                    set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'connected neurites'), 'ForegroundColor', [0, 0.9, 0])
                    set(ngui.legend2, 'String', sprintf('%s\n%s', 'Yellow:', 'unconnected neurites'), 'ForegroundColor', [0.78, 0.78, 0])
                 case NIPState.SkeletonizedNeurites
@@ -388,10 +348,6 @@ classdef NeuronGUI < handle
                     set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'connected neurites'), 'ForegroundColor', [0, 0.9, 0])
                     set(ngui.legend2, 'String', sprintf('%s\n%s', 'Yellow:', 'unconnected neurites'), 'ForegroundColor', [0.78, 0.78, 0])
                     
-                    %case NIPState.ComputedPaths
-                    %[FileName, PathName]=uiputfile('*.*','Save parameters as');
-                    %parameterData=strcat(PathName, FileName);
-                    %disp(parameterData)
                 case NIPState.ComputedPaths
                     %writeParametersFile()
                     %
@@ -408,24 +364,17 @@ classdef NeuronGUI < handle
                 otherwise
                     error('[NeuronGUI.updateUser] Unexpected State: %s', char(state));
             end
-            
-            %             %Test - 7/5
-            %              ngui.nextActionTextbox;
-            %              text(0,0.5,ngui.nip.getActionName,'Units','Normalized')
+
             
             %check if ngui.nip.getActionName will go beyond one line
             
             %edited on 7/5
-            if length(ngui.nip.getActionName) < 21 %Hard-coded. Don't know how to check if a line in textbox is full
+            if length(ngui.nip.getActionName) < 26 %Hard-coded. Don't know how to check if a line in textbox is full
                 actionStr = sprintf('\n%s',ngui.nip.getActionName); %if only one line, move it to the bottom of the textbox
             else
                 actionStr = ngui.nip.getActionName;
             end
-            set(ngui.nextActionTextbox,'string',actionStr);
-            % disp('=========================================================')
-            % get(ngui.nextActionTextbox, 'FontSize')
-            % get(ngui.nextActionTextbox, 'Position')
-            
+            set(ngui.nextActionTextbox,'string',actionStr);            
             
             %             set(ngui.instructionTextbox,'string',ngui.nip.getActionName);%instruction of each parameter;
             ngui.parameters=ngui.nip.getParameters;
@@ -441,17 +390,17 @@ classdef NeuronGUI < handle
                     set(ngui.hSlider(i-1),'Enable',enbl);
                 end
             end
-            
-            %             Function for obtaining the zoomed X Y limiits for zoom
-            %             preservation
-            %              function updateLimits(~,evd) %Nested fucntion for preserving zooming limit
-            %                 newlimits(2,:) = get(evd.Axes,'YLim');
-            %                 newlimits(1,:) = get(evd.Axes,'XLim');
-            %
-            %              end
+
         end
         
         function backButtonCallback(ngui,UIhandle,x)
+           %If any parameter value is empty, cannot go back 
+            for i=2:numel(ngui.editBoxes) 
+                if isempty(get(ngui.editBoxes(i),'String'))
+                    warndlg('Empty parameter value is not allowed. Please select a value')
+                    return
+                end
+            end
             status=ngui.nip.back();
             updateUser(ngui,status);
             
@@ -503,24 +452,11 @@ classdef NeuronGUI < handle
             jInput=findjobj(ngui.batchInput,'nomenu'); %get the UIScrollPane container
             jInput=jInput.getComponent(0).getComponent(0);
             set(jInput,'Editable',0);
-            
-            %             uicontrol('Style', 'pushbutton', 'String', 'Parameters File',...
-            %                 'Position', [0 450 100 25], 'Callback', @ngui.parameterButtonCallback);
-            %             parametername = uicontrol('Style', 'text', 'Units', 'pixels',...
-            %                 'Position', [110 450 300 25],'HorizontalAlignment','right');
-            %             for k = 1:length(ngui.editBoxes)
-            %             set(ngui.editBoxes(k),'Enable', 'off'); %disable the editboxes in control panel
-            %             end
+
             
             for k = 1:length(ngui.controlHandles)
                 set(ngui.controlHandles{k},'Enable','off')
             end
-            %             set(saveButtonHandle,'Enable','off')
-            %             set(parameterButtonHandle,'Enable','off')
-            %             set(quitButtonHandle,'Enable','off')
-            %             set(backButtonHandle,'Enable','off')
-            %             set(forwardButtonHandle,'Enable','off')
-            %             set(batchButtonHandle,'Enable','off')
             
             %figure close call back
             % close batch processing window = click back to control panel
@@ -541,10 +477,6 @@ classdef NeuronGUI < handle
         function outputButtonCallback(ngui, UIhandle, x, processButtonHandle)
             ngui.dirout=uigetdir('*.*','Store Data');
             set(ngui.batchOutput,'string', ngui.dirout);
-            %             output = uicontrol('Style', 'edit', 'Units', 'pixels',...
-            %                 'string', ngui.dirout, ...
-            %                 'Position', [110 350 300 25],'HorizontalAlignment','left', ...
-            %                 'Enable', 'off');
             if ~isempty(ngui.dirout) && ischar(ngui.dirout) %matlab returns numerical 0 when nothing is selected
                 ngui.enableProcessOut = 'On';
             else
@@ -562,10 +494,6 @@ classdef NeuronGUI < handle
         
         function inputButtonCallback(ngui, UIhandle, x, processButtonHandle)%get directory input
             ngui.dirin=uigetdir('*.*','Image File');
-            %             filename = uicontrol('Style', 'edit', 'Units', 'pixels',...
-            %                 'string', ngui.dirin, ...
-            %                 'Position', [110 250 300 25],'HorizontalAlignment','left', ...
-            %                 'Enable', 'off');
             set(ngui.batchInput, 'string', ngui.dirin)
             
             if ~isempty(ngui.dirin) && ischar(ngui.dirin) %matlab returns numerical 0 when nothing is selected
@@ -583,12 +511,6 @@ classdef NeuronGUI < handle
         
         function inputFileButtonCallback(ngui, UIhandle, x, processButtonHandle)%get files input
             [file,path]=uigetfile('*.*','Image File', 'MultiSelect','on');%same path for the files
-            %             file = cellstr(file); %convert char to cell %6/28
-            %             path = cellstr(path); %convert char to cell %6/28
-            %             disp('===========================================================')
-            %             class(file)
-            %             file
-            %             length(file)
             if iscell(file) %if more then 1 file is selected (cell array)
                 ngui.filein = cell(1, length(file));
                 for i = 1: length(file)
@@ -641,6 +563,8 @@ classdef NeuronGUI < handle
                 error('The input cannot be empty')
             end
             tElapsed = 600;%initial guess of the processing time for an image = 10 min
+            
+            if iscell(namelist) % if the input is more than one file
             currentWait = round(tElapsed*(length(namelist))/60,1);
             ngui.waitbar = waitbar(1/length(namelist), ['Processing Image 1 of ' num2str(length(namelist)) ' Approximate Time: ' num2str(currentWait) 'minutes'])
             for i = 1:length(namelist)
@@ -649,11 +573,20 @@ classdef NeuronGUI < handle
                 ngui.nip.oneProcess(namelist{i}, ngui.dirout);
                 tElapsed = toc(tStart)
                 currentWait = round(tElapsed*(length(namelist)-i)/60,1);
+                
                 if i<length(namelist)
                     waitbar((i+1)/length(namelist), ngui.waitbar, ['Processing Image ' num2str(i+1) 'of ' num2str(length(namelist)) ' Approximate Time: ' num2str(currentWait) 'minutes'])
                 else
                     close(ngui.waitbar)
                 end
+            end
+            else  %if the input is only one file
+                currentWait = round(tElapsed/60,1);
+                ngui.waitbar = waitbar(1, ['Processing Image 1 of 1  Approximate Time: ' num2str(currentWait) 'minutes'])
+                tStart = tic;
+                ngui.nip.oneProcess(namelist, ngui.dirout);
+                tElapsed = toc(tStart)
+                close(ngui.waitbar)     
             end
         end
         
@@ -672,17 +605,7 @@ classdef NeuronGUI < handle
                 set(ngui.editBoxes(k+1),'String', sliderValue{k})
             end
             
-            %             %(2) Call NIP to perform processing at a specific step
-            %             for i=1:numel(ngui.editBoxes);
-            %                 valueString=get(ngui.editBoxes(i),'string');
-            %                 ngui.parameters(i).value=valueString;
-            %             end
-            %             status=ngui.nip.next(ngui.parameters);
-            %             updateUser(ngui,status);
-            
-            %             %(3) Call NIP to go back to the previous state
-            %             status=ngui.nip.back();
-            %             updateUser(ngui,status);
+
             
             
         end
@@ -691,8 +614,11 @@ classdef NeuronGUI < handle
             num = length(ngui.hSlider);%num of sliders
             textValue = zeros(1,num);
             for k = 1:num
+                if ~isempty(get(ngui.editBoxes(k+1),'String'))
                 textValue(k) = str2num(get(ngui.editBoxes(k+1),'String'));
                 set(ngui.hSlider(k),'Value', textValue(k))
+                else
+                end
             end
             
         end
