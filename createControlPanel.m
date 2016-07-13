@@ -9,7 +9,6 @@ hgtControlPanel_rel = 0.82;%control panel height relative to the screen
 
 % wControlPanel = wControlPanel_rel * wScreen;%control panel width in pixels
 % hgtControlPanel = hgtControlPanel_rel * hScreen;%control panel height in pixels
-
 %On any PC or Mac, the relative position of the control panel on the screen
 %is fixed, since its position is normalized; the relative position of each 
 %object on control panel is also fixed, since normalized positions are 
@@ -35,9 +34,25 @@ buttonGap = 10/hgtControlPanel; %the vertical gap between buttons
 sliderGap = 17/hgtControlPanel; %vertical gap below the corresponding edit box
 sliderHeight = 15/hgtControlPanel; 
 
-
 totalwidth = leftMargin*2 + editBoxWidth + horizontalSpace + textBoxWidth + ...
              instructionBoxWidth;% replaced with wControlPanel
+         
+% 11 parameter explanation messages; ideally put it under oneParameterArr          
+paraExplanation = {sprintf('%s\n%s', 'Low: Include more dim nuclei', 'High:Include less dim nuclei'),...
+    sprintf('%s\n%s', 'Low: More individual nuclei', 'High:More single nuclei/clusters'),...
+    sprintf('%s\n%s\n%s', 'Notice: this parameter must be a positive integer.', 'Low: Less pixels being removed as noise', 'High:More pixels being removed as noise'),...
+    sprintf('%s\n%s\n%s', 'Notice: this parameter must be positive and  < 1 .', 'Low: More nuclei are identified as individual nuclei', 'High:More nuclei are identified as part of nuclei clusters'),...
+    sprintf('%s\n%s', 'Low: Greater nuclei count for each cluster', 'High:Smaller nuclei count for each cluster'),...
+    sprintf('%s\n%s', 'Low: More nuclei would be regarded as too small to be important', 'High:Fewer nuclei would be regarded as too small to be important'),...
+    sprintf('%s\n%s', 'Low: Include more pixels as parts of cell bodies and neurites', 'High:Include fewer pixels as parts of cell bodies and neurites'),...
+    sprintf('%s\n%s\n%s', 'Notice: this parameter must be a positive integer.', 'Low: Remove neurites to a lesser extent', 'High:Remove neurites to a greater extent'),...
+    sprintf('%s\n%s', 'Low: Include more pixels as parts of neurites', 'High:Include fewer pixels as parts of neurites'),...
+    sprintf('%s\n%s', 'Low: Capture more additional neurites', 'High:Capture less additional neurites'),...
+    sprintf('%s\n%s\n%s', 'Notice: this parameter must be a positive integer.', 'Low: Merge neurites moderately ', 'High:Merge neurites radically'),...
+    };    
+         
+         
+         
          
 savepushButtonHandle=uicontrol('Style','pushbutton',...
     'units', 'normalized',...
@@ -106,18 +121,26 @@ backButtonTextbox=uicontrol('Style','text',...
 
 bottom=bottom+pushButtonHeight+verticalSpace;
 %create edit boxes and sliders
-for i=numel(oneParameterArr):-1:4
-    edit_box(i)=createEditBox(hControlPanel,i,oneParameterArr(i),[leftMargin bottom editBoxWidth editBoxHeight],[leftMargin+editBoxWidth+horizontalSpace bottom textBoxWidth textBoxHeight],editBoxCallbackHandle);
+for i=numel(oneParameterArr):-1:2 %:originally -1:4 (7/13)
+    edit_box(i)=createEditBox(hControlPanel,i,oneParameterArr(i),...
+        [leftMargin bottom editBoxWidth editBoxHeight],...
+        [leftMargin+editBoxWidth+horizontalSpace bottom textBoxWidth textBoxHeight],...
+        editBoxCallbackHandle, paraExplanation{i-1}); %paraExplanation is the mouse-hover help message
     hSlider(i-1) = createSlider(hControlPanel,edit_box(i),[leftMargin bottom-sliderGap  editBoxWidth+horizontalSpace+textBoxWidth sliderHeight], sliderCallbackHandle);  
     bottom=bottom+(editBoxHeight+verticalSpace);
 end
-for i=3:-1:2
-    edit_box(i)=createEditBox(hControlPanel,i,oneParameterArr(i),[leftMargin bottom editBoxWidth editBoxHeight],[leftMargin+editBoxWidth+horizontalSpace bottom textBoxWidth*1/2 textBoxHeight], editBoxCallbackHandle);
-    hSlider(i-1) = createSlider(hControlPanel,edit_box(i),[leftMargin bottom-sliderGap  editBoxWidth+horizontalSpace+textBoxWidth sliderHeight], sliderCallbackHandle);
-    bottom=bottom+(editBoxHeight+verticalSpace);
-end
+set(hSlider(3), 'SliderStep', [0.10, 0.10]) %nucleusOpenDiskRadius
+set(hSlider(4),'Max', 1) %areaToConvexHullRatio
+set(hSlider(8), 'SliderStep', [0.10, 0.10])%neuriteRemovalDiskRadius
+set(hSlider(11), 'SliderStep', [0.10, 0.10])%tujClosingSquareSide
+
+% for i=3:-1:2 %commented on 7/13, merged the two for loops
+%     edit_box(i)=createEditBox(hControlPanel,i,oneParameterArr(i),[leftMargin bottom editBoxWidth editBoxHeight],[leftMargin+editBoxWidth+horizontalSpace bottom textBoxWidth*1/2 textBoxHeight], editBoxCallbackHandle);
+%     hSlider(i-1) = createSlider(hControlPanel,edit_box(i),[leftMargin bottom-sliderGap  editBoxWidth+horizontalSpace+textBoxWidth sliderHeight], sliderCallbackHandle);
+%     bottom=bottom+(editBoxHeight+verticalSpace);
+% end
 bottom = bottom - verticalSpace/2;
-for i= 1:-1:1
+for i= 1:-1:1  %the 1st edit box - show image file dir
     edit_box(i)=createEditBox(hControlPanel,i,oneParameterArr(i),[leftMargin bottom fileNameBoxWidth editBoxHeight],[leftMargin+fileNameBoxWidth+horizontalSpace bottom textBoxWidth textBoxHeight]);
     bottom=bottom+(editBoxHeight+buttonGap);
 end

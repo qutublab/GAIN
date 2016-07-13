@@ -1,4 +1,4 @@
-function edit_box=createEditBox(h,i,oneParameter,pEdit,pText,editBoxCallbackHandle)
+function edit_box=createEditBox(h,i,oneParameter,pEdit,pText,editBoxCallbackHandle, paraExplanation)
 %figure(h);
 h;
 if oneParameter.active
@@ -25,6 +25,7 @@ else
     uicontrol('Style','text',...
     'Units', 'normalized',...
     'position', pText,...
+    'TooltipString', paraExplanation,... %parameter explanation; shows up when mouse hover on the text box
     'string',oneParameter.name,...
     'HorizontalAlignment','left');
 end  

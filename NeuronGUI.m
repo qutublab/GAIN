@@ -56,6 +56,7 @@ classdef NeuronGUI < handle
                     handle=ngui.handle;
                 end
             end
+            set(handle,  'name', 'Figure Window','numbertitle','off')
             set(handle, 'Units', 'normalized', 'Position', [ 0.32    0.05   0.636   0.8])
             ngui.subPanel = uipanel('Parent',handle,...
                 'BackgroundColor','white',...
@@ -138,11 +139,18 @@ classdef NeuronGUI < handle
 %                     set(ngui.instructionTextbox, 'string', 'Original nucleus image')%instruction textbox on control panel
                     set(ngui.legend,'string',sprintf('%s\n%s\n%s','Original', 'Nucleus', 'Image'),'ForegroundColor', 'k') 
                     
+                    
+%                     %Automatically update graphs when variables change
+%                     for i = 2:numel(ngui.editBoxes)
+%                         paraValue(i) = str2num(get(ngui.editBoxes(k+1),'String'));
+%                     end
+%                     linkdata on
+                    
                 case NIPState.SegmentedNucleusImageOnce;
                     I=ngui.nip.getFirstNucleusMask();
                     J=ngui.nip.getNucleusImage();
                     %Need to show stuff from before too
-                    rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);%what is ocbm?
+                    rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);%ocbm = opened cell body mask; empty here
                     rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
                     rgb = addBorder(rgb, I, [0, 0, 1]);
@@ -242,7 +250,7 @@ classdef NeuronGUI < handle
                     imshow(rgb)
                     text(ngui.PCluster(2,:),ngui.PCluster(1,:),ngui.NClusterText,'Color','white','FontSize',12,'FontWeight', 'bold')%'Color',[0, 0.5, 0.5]
 %                     set(ngui.instructionTextbox, 'string', 'magenta - nuclei too small')
-                    set(ngui.legend, 'String', sprintf('%s\n%s','Magenta:', 'small nuclei'), 'ForegroundColor', 'magenta')
+                    set(ngui.legend, 'String', sprintf('%s\n%s','Magenta:', sprintf('%s\n%s', 'Nuclei too small', 'to be accepted')), 'ForegroundColor', 'magenta')
                 case NIPState.SegmentedCells
                     I = ngui.nip.getCellImage();
                     CellMask = ngui.nip.getFirstCellMask();
@@ -381,7 +389,7 @@ classdef NeuronGUI < handle
             for i=1:numel(ngui.parameters)
                 if ngui.parameters(i).active
                     enbl='on';
-                    ngui.parameters(i).description
+                    ngui.parameters(i).description % descriptions are empty now
                 else
                     enbl='off';
                 end
@@ -414,8 +422,10 @@ classdef NeuronGUI < handle
             
             rmpath(ngui.parent)   %remove the GAIN directory when the user quits the program
         end
-        function batchButtonCallback(ngui,UIhandle, x)
+        function batchButtonCallback(ngui,UIhandle, x)% "Exit to batch processing" button
             ngui.batch = figure;
+            %hide the figure toolbar
+            set(ngui.batch, 'menubar', 'none', 'name', 'Settings for Batch Processing','numbertitle','off');
             ngui.batch,%check if it is necessary
             processButtonHandle = uicontrol('Style', 'pushbutton', 'String', 'Process',...
                 'Position', [410 0 150 50], 'Callback', @ngui.processButtonCallback, ...
@@ -459,8 +469,10 @@ classdef NeuronGUI < handle
             end
             
             %figure close call back
-            % close batch processing window = click back to control panel
+            % close batch processing window when a user clicks "back to
+            % control panel"
             set(ngui.batch, 'CloseRequestFcn',@ngui.controlPanelButtonCallback)
+            
         end
         function controlPanelButtonCallback(ngui,UIhandle, x) %back to control panel
             %                 error('Terminate batch processing.')
@@ -620,6 +632,8 @@ classdef NeuronGUI < handle
                 else
                 end
             end
+      
+      
             
         end
         
