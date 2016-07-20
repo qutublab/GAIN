@@ -2,17 +2,17 @@ classdef NumericParameters < handle
     properties
         % As properties are added and removed, update the static
         % parameterType method that associates each property with its type.
-        dapiThreshFactor1 = []
-        dapiThreshFactor2 = []
-        nucleusOpenDiskRadius = []      % Disk size for post-threshold imopen
-        areaToConvexHullRatio = []      % Ratio for determining nucleus clusters
-        medianNucleusAdjustmentFactor = []
-        median2MinimumNucleusAreaRatio = []
-        tujThreshFactor1 = []
-        neuriteRemovalDiskRadius = []   % Disk size for imopen to remove neurites
-        tujThreshFactor2 = []
-        tujThreshFactor3 = []
-        tujClosingSquareSide = []       % Size of square structuring element for imclose
+        SegmentBrightNuclei = []
+        SegmentDimNuclei = []
+        SeparateWeaklyConnectedNuclei  = []      % Disk size for post-threshold imopen
+        DetermineNucleiClusters = []      % Ratio for determining nucleus clusters
+        SingleNucleusSize = []
+        MinAcceptableNucleusSize  = []
+        CellBodiesandNeurites = []
+        RemoveNeurites = []   % Disk size for imopen to RemoveNeurites
+        SegmentNeurites = []
+        ImproveSegmentationQuality= []
+        ConnectNeuriteSections = []       % Size of square structuring element for imclose
  
         
         
@@ -28,17 +28,17 @@ classdef NumericParameters < handle
             if isempty(typesMap)
                 % Initialize typesMap
                 typesMap = NumericParameters.createTypesMap(...
-                    'dapiThreshFactor1', NumericSubtype.POSITIVE,...
-                    'dapiThreshFactor2', NumericSubtype.POSITIVE,...
-                    'nucleusOpenDiskRadius', NumericSubtype.POSITIVE_INTEGER,...
-                    'areaToConvexHullRatio', NumericSubtype.POSITIVE_LE1,...
-                    'medianNucleusAdjustmentFactor', NumericSubtype.POSITIVE,...
-                    'median2MinimumNucleusAreaRatio', NumericSubtype.POSITIVE,...
-                    'tujThreshFactor1', NumericSubtype.POSITIVE,...
-                    'tujThreshFactor2', NumericSubtype.POSITIVE,...
-                    'tujThreshFactor3', NumericSubtype.POSITIVE,...
-                    'neuriteRemovalDiskRadius', NumericSubtype.POSITIVE_INTEGER,...
-                    'tujClosingSquareSide', NumericSubtype.POSITIVE_INTEGER...
+                    'SegmentBrightNuclei', NumericSubtype.POSITIVE,...
+                    'SegmentDimNuclei', NumericSubtype.POSITIVE,...
+                    'SeparateWeaklyConnectedNuclei', NumericSubtype.POSITIVE_INTEGER,...
+                    'DetermineNucleiClusters', NumericSubtype.POSITIVE_LE1,...
+                    'SingleNucleusSize', NumericSubtype.POSITIVE,...
+                    'MinAcceptableNucleusSize', NumericSubtype.POSITIVE,...
+                    'CellBodiesandNeurites', NumericSubtype.POSITIVE,...
+                    'SegmentNeurites', NumericSubtype.POSITIVE,...
+                    'ImproveSegmentationQuality', NumericSubtype.POSITIVE,...
+                    'RemoveNeurites', NumericSubtype.POSITIVE_INTEGER,...
+                    'ConnectNeuriteSections', NumericSubtype.POSITIVE_INTEGER...
                     );
             end
             typ = typesMap(paramName);
@@ -85,32 +85,32 @@ classdef NumericParameters < handle
 
         % Parameters set during program development
         function initialize(np)
-            np.dapiThreshFactor1 = 1;
-            np.dapiThreshFactor2 = 1;
-            np.nucleusOpenDiskRadius = 3;
-            np.areaToConvexHullRatio = 0.95;
-            np.medianNucleusAdjustmentFactor = 1;
-            np.median2MinimumNucleusAreaRatio = 2;
-            np.tujThreshFactor1 = 1;
-            np.tujThreshFactor2 = 1;
-            np.tujThreshFactor3 = 1.5;
-            np.neuriteRemovalDiskRadius = 5;
-            np.tujClosingSquareSide = 3;
+            np.SegmentBrightNuclei = 1;
+            np.SegmentDimNuclei = 1;
+            np.SeparateWeaklyConnectedNuclei  = 3;
+            np.DetermineNucleiClusters = 0.95;
+            np.SingleNucleusSize = 1;
+            np.MinAcceptableNucleusSize  = 2;
+            np.CellBodiesandNeurites = 1;
+            np.SegmentNeurites = 1;
+            np.ImproveSegmentationQuality= 1.5;
+            np.RemoveNeurites = 5;
+            np.ConnectNeuriteSections = 3;
         end
 
         % Optimized parameters 
         function initialize2(np)
-            np.tujThreshFactor1 = 0.996921;
-            np.neuriteRemovalDiskRadius = 4.896013;
-            np.tujThreshFactor2 = 0.969891;
-            np.tujThreshFactor3 = 1.5;   % Parameter added after optimzation was done
-            np.tujClosingSquareSide = 3.020864;
-            np.dapiThreshFactor1 = 1.013925 ;
-            np.dapiThreshFactor2 = 1.036532;
-            np.nucleusOpenDiskRadius = 2.961556;
-            np.areaToConvexHullRatio = 0.964889;
-            np.medianNucleusAdjustmentFactor = 1.055883;
-            np.median2MinimumNucleusAreaRatio = 2.003794;
+            np.CellBodiesandNeurites = 0.996921;
+            np.RemoveNeurites = 4.896013;
+            np.SegmentNeurites = 0.969891;
+            np.ImproveSegmentationQuality= 1.5;   % Parameter added after optimzation was done
+            np.ConnectNeuriteSections = 3.020864;
+            np.SegmentBrightNuclei = 1.013925 ;
+            np.SegmentDimNuclei = 1.036532;
+            np.SeparateWeaklyConnectedNuclei  = 2.961556;
+            np.DetermineNucleiClusters = 0.964889;
+            np.SingleNucleusSize = 1.055883;
+            np.MinAcceptableNucleusSize  = 2.003794;
             np.rectify();
         end
         
@@ -256,17 +256,17 @@ classdef NumericParameters < handle
         end
         
         function str = toString(p)
-            str = sprintf('NumericParameters[nucleusOpenDiskRadius=%d', p.nucleusOpenDiskRadius);
-            str = sprintf('%s,neuriteRemovalDiskRadius=%d', str, p.neuriteRemovalDiskRadius);
-            str = sprintf('%s,areaToConvexHullRatio=%f', str, p.areaToConvexHullRatio);
-            str = sprintf('%s,tujClosingSquareSide=%d', str, p.tujClosingSquareSide);
-            str = sprintf('%s,tujThreshFactor1=%f', str, p.tujThreshFactor1);
-            str = sprintf('%s,tujThreshFactor2=%f', str, p.tujThreshFactor2);
-            str = sprintf('%s,tujThreshFactor3=%f', str, p.tujThreshFactor3);
-            str = sprintf('%s,dapiThreshFactor1=%f', str, p.dapiThreshFactor1);
-            str = sprintf('%s,dapiThreshFactor2=%f', str, p.dapiThreshFactor2);
-            str = sprintf('%s,median2MinimumNucleusAreaRatio=%f', str, p.median2MinimumNucleusAreaRatio);
-            str = sprintf('%s,medianNucleusAdjustmentFactor=%f]', str, p.medianNucleusAdjustmentFactor);
+            str = sprintf('NumericParameters[SeparateWeaklyConnectedNuclei =%d', p.SeparateWeaklyConnectedNuclei );
+            str = sprintf('%s,RemoveNeurites=%d', str, p.RemoveNeurites);
+            str = sprintf('%s,DetermineNucleiClusters=%f', str, p.DetermineNucleiClusters);
+            str = sprintf('%s,ConnectNeuriteSections=%d', str, p.ConnectNeuriteSections);
+            str = sprintf('%s,CellBodiesandNeurites=%f', str, p.CellBodiesandNeurites);
+            str = sprintf('%s,SegmentNeurites=%f', str, p.SegmentNeurites);
+            str = sprintf('%s,ImproveSegmentationQuality=%f', str, p.ImproveSegmentationQuality);
+            str = sprintf('%s,SegmentBrightNuclei=%f', str, p.SegmentBrightNuclei);
+            str = sprintf('%s,SegmentDimNuclei=%f', str, p.SegmentDimNuclei);
+            str = sprintf('%s,MinAcceptableNucleusSize =%f', str, p.MinAcceptableNucleusSize );
+            str = sprintf('%s,SingleNucleusSize=%f]', str, p.SingleNucleusSize);
         end
         
     end

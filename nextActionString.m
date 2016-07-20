@@ -26,9 +26,12 @@ function a = nextActionString(s)
             a = 'Segment Neurites in Background';
         case NIPState.ResegmentedNeurites
             a = 'Close Neurite Mask';
+        case NIPState.ResegmentedNeuriteEdges%temporary editing 6/27
+            a = 'ResegmentedNeuriteEdges';%
         case NIPState.ClosedNeuriteMask
-            a = 'Create Graph';
-        
+            a = 'SkeletonizedNeurites'; %temporary editing 6/29
+        case NIPState.SkeletonizedNeurites%temporary editing 6/29
+            a = 'Create Graph';%
         case NIPState.CreatedGraph
             a = 'Find Neurite Paths';
         case NIPState.ComputedPaths
