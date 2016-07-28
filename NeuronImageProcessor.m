@@ -186,7 +186,7 @@ classdef NeuronImageProcessor < handle
                 case NIPState.SegmentedCells
                     status = nip.isolateCellBodies();
                 case NIPState.SeparatedBodiesFromNeurites
-                    status = nip.resegmentNeurites();
+                    status = nip.reNeuriteSelectivity();
                 case NIPState.ResegmentedNeurites
                     status = nip.resegmentNeuriteEdges();
                 case NIPState.ResegmentedNeuriteEdges
@@ -297,7 +297,7 @@ classdef NeuronImageProcessor < handle
         function status = firstNucleusSegmentation(nip)
             status = '';
             thresh1 = graythresh(nip.nucleusImage);
-            thresh1 = min(1, thresh1 * nip.parameters.SegmentBrightNuclei);
+            thresh1 = min(1, thresh1 * nip.parameters.BrightNucleiSelectivity);
             nip.nucleusThresh1 = thresh1;
             nip.firstNucleusMask = im2bw(nip.nucleusImage, thresh1);
             nip.firstNucleusMask = imfill(nip.firstNucleusMask, 'holes');
@@ -306,7 +306,7 @@ classdef NeuronImageProcessor < handle
         function status = secondNucleusSegmentation(nip)
             status = '';
             thresh2 = graythresh(nip.nucleusImage(~nip.firstNucleusMask));
-            thresh2 = min(1, thresh2 * nip.parameters.SegmentDimNuclei);
+            thresh2 = min(1, thresh2 * nip.parameters.DimNucleiSelectivity);
             nip.nucleusThresh2 = thresh2;
             nip.secondNucleusMask = im2bw(nip.nucleusImage, thresh2) | nip.firstNucleusMask;
             nip.secondNucleusMask = imfill(nip.secondNucleusMask, 'holes');
@@ -314,7 +314,7 @@ classdef NeuronImageProcessor < handle
 
         function status = openNucleusMask(nip)
             status = '';
-            se = strel('disk', nip.parameters.SeparateWeaklyConnectedNuclei , 0);
+            se = strel('disk', nip.parameters.NucleiSeparationControl , 0);
             nip.openedNucleusMask = imopen(nip.secondNucleusMask, se);
         end
 
@@ -344,7 +344,7 @@ classdef NeuronImageProcessor < handle
                 % of its convex hull
                 props = regionprops(M, 'Area','Solidity', 'Centroid');
                 solidity = props.Solidity;
-                cluster = solidity < nip.parameters.DetermineNucleiClusters;
+                cluster = solidity < nip.parameters.NucleusClusterSensitivity;
                 if ~cluster
                     nonclusterCount = nonclusterCount + 1;
                 end
@@ -358,8 +358,8 @@ classdef NeuronImageProcessor < handle
 %             fprintf('[NeuronImageProcessor.identifyNucleusClusters] minSolidity=%f  maxSolidity=%f (%d objects)\n', minSolidity, maxSolidity, numLabels);
             
             if (~nip.optimization) && (nonclusterCount == 0)
-                status = sprintf('No non-clustered nuclei were found at an DetermineNucleiClusters of %f',...
-                   nip.parameters.DetermineNucleiClusters); 
+                status = sprintf('No non-clustered nuclei were found at an NucleusClusterSensitivity of %f',...
+                   nip.parameters.NucleusClusterSensitivity); 
             end
         end
 
@@ -386,7 +386,7 @@ classdef NeuronImageProcessor < handle
                 fprintf('[NeuronImageProcessor.calculateNominalMeanNucleusArea] Forcing nominalMeanNucleusArea for parameter optimization!\n');
             else
                 nip.medianSingleNucleusArea = median(singleNucleusArea);
-                nip.nominalMeanNucleusArea = nip.medianSingleNucleusArea * nip.parameters.SingleNucleusSize;
+                nip.nominalMeanNucleusArea = nip.medianSingleNucleusArea * nip.parameters.SingleNucleusSizeControl;
             end
             for i = 1:numel(nip.nucleusDataArr)
                 area = nip.nucleusDataArr(i).area;
@@ -403,7 +403,7 @@ classdef NeuronImageProcessor < handle
 
         function status = calculateMinNucleusArea(nip)
             status = '';
-            nip.minNucleusArea = max(1, ceil(nip.medianSingleNucleusArea / nip.parameters.MinAcceptableNucleusSize ));
+            nip.minNucleusArea = max(1, ceil(nip.medianSingleNucleusArea / nip.parameters.MinimumAcceptableNucleusSizeControl  ));
             for i = 1:numel(nip.nucleusDataArr)
                 if nip.nucleusDataArr(i).area < nip.minNucleusArea
                     nip.nucleusDataArr(i).small = true;
@@ -425,7 +425,7 @@ classdef NeuronImageProcessor < handle
         function status = segmentCellBodies(nip)
             status = '';
             thresh1 = graythresh(nip.cellImage);
-            thresh1 = min(1, thresh1 * nip.parameters.CellBodiesandNeurites);
+            thresh1 = min(1, thresh1 * nip.parameters.CellBodySelectivity);
             nip.cellThresh1 = thresh1;
             nip.firstCellMask = im2bw(nip.cellImage, thresh1);
 %             nip.firstCellMask = imfill(nip.firstCellMask, 'holes');
@@ -434,7 +434,7 @@ classdef NeuronImageProcessor < handle
 
         function status = isolateCellBodies(nip)
             status = '';
-            se = strel('disk', nip.parameters.RemoveNeurites, 0);
+            se = strel('disk', nip.parameters.CellBodyNeuriteDiscrimination, 0);
             nip.openedCellBodyMask = imfill(imopen(nip.firstCellMask, se), 'holes');
             nip.firstNeuriteMask = nip.firstCellMask & ~nip.openedCellBodyMask;
             nip.firstConnectedNeuriteMask = imreconstruct(nip.openedCellBodyMask, nip.firstCellMask) & nip.firstNeuriteMask;
@@ -446,18 +446,18 @@ classdef NeuronImageProcessor < handle
                 nip.minNucleusArea);
         end
 
-        function status = resegmentNeurites(nip)
+        function status = reNeuriteSelectivity(nip)
             status = '';
 
             % Use thresholding on the background to find more signal
             thresh2 = graythresh(nip.cellImage(~nip.firstCellMask));
-            thresh2 = min(1, thresh2 * nip.parameters.SegmentNeurites);
+            thresh2 = min(1, thresh2 * nip.parameters.NeuriteSelectivity);
             nip.cellThresh2 = thresh2;
 
             nip.secondCellMask = im2bw(nip.cellImage, thresh2) | nip.firstCellMask;
             
             % Use imopen to remove neurites leaving extended cell bodies
-            se = strel('disk', nip.parameters.RemoveNeurites, 0);
+            se = strel('disk', nip.parameters.CellBodyNeuriteDiscrimination, 0);
             nip.extendedCellBodyMask = imopen(nip.secondCellMask, se);
             % Isolate neurites
             nip.secondNeuriteMask = (nip.secondCellMask & ~nip.extendedCellBodyMask) | nip.firstNeuriteMask;
@@ -465,7 +465,7 @@ classdef NeuronImageProcessor < handle
 
             % Use edge detection as an additional way to find neurites
             nip.gradientMag = imgradient(nip.cellImage);
-%            gmagThresh1 = min(1, graythresh(nip.gradientMag) * nip.parameters.SegmentNeurites);
+%            gmagThresh1 = min(1, graythresh(nip.gradientMag) * nip.parameters.NeuriteSelectivity);
             gmagThresh1 = graythresh(nip.gradientMag);
             edges1 = im2bw(nip.gradientMag, gmagThresh1);
             
@@ -474,13 +474,13 @@ classdef NeuronImageProcessor < handle
             % Remove edges that fall within a cell body
 %             edges1 = edges1 & ~nip.openedCellBodyMask;
             % Fill-in neurite edges
-            edgeObjects = imclose(edges1, strel('disk', round(nip.parameters.RemoveNeurites / 2), 0));
+            edgeObjects = imclose(edges1, strel('disk', round(nip.parameters.CellBodyNeuriteDiscrimination / 2), 0));
             % Some edges are from the cell body and may be just outside the
             % already determined cell body.  When finding neurite edges,
             % these cell body edges can be (partially) eliminated by using
             % imopen on the combination of the edge objects and the already
             % determined cell body.
-            edgeCellBodies = imopen(edgeObjects | nip.openedCellBodyMask, strel('disk', nip.parameters.RemoveNeurites, 0));
+            edgeCellBodies = imopen(edgeObjects | nip.openedCellBodyMask, strel('disk', nip.parameters.CellBodyNeuriteDiscrimination, 0));
             edgeNeurites = edgeObjects & ~edgeCellBodies;
             
 %             nip.secondNeuriteMask = nip.secondNeuriteMask | edgeNeurites;
@@ -497,7 +497,7 @@ classdef NeuronImageProcessor < handle
 
             nip.neuriteExtensions = extendNeurites(nip, nip.secondNeuriteMask,...
                 nip.openedCellBodyMask, nip.extendedCellBodyMask,...
-                round(nip.parameters.RemoveNeurites/2));
+                round(nip.parameters.CellBodyNeuriteDiscrimination/2));
 
 % r = nip.cellImage;
 % brdr = nip.extendedCellBodyMask & ~imerode(nip.extendedCellBodyMask, true(3));
@@ -526,13 +526,13 @@ classdef NeuronImageProcessor < handle
             status = '';
             % Edge background does not include cell bodies found by thresholding
             backgroundPixels = nip.gradientMag(~(nip.firstEdges | nip.openedCellBodyMask)); 
-            thresh2 = nip.parameters.ImproveSegmentationQuality * graythresh(backgroundPixels);
+            thresh2 = nip.parameters.SecondaryNeuriteSelectivity * graythresh(backgroundPixels);
             nip.secondEdges = im2bw(nip.gradientMag, thresh2);
             % Ignore edges that are within a cell body
             %edges2 = nip.secondEdges & ~nip.openedCellBodyMask; 
             
             % Fill-in edges to reconstruct neurites between edges
-            filledEdges2 = imclose(nip.secondEdges, strel('disk', floor(nip.parameters.RemoveNeurites / 2), 0));
+            filledEdges2 = imclose(nip.secondEdges, strel('disk', floor(nip.parameters.CellBodyNeuriteDiscrimination / 2), 0));
             
             % Extended cell bodies were found by applying a second
             % thresholding operation.  However not all of these extended
@@ -543,7 +543,7 @@ classdef NeuronImageProcessor < handle
             
 %             edgeNeurites2 = filledEdges2 & ~occupiedECB;
             
-            cellBody = imopen(occupiedECB | filledEdges2, strel('disk', nip.parameters.RemoveNeurites, 0));
+            cellBody = imopen(occupiedECB | filledEdges2, strel('disk', nip.parameters.CellBodyNeuriteDiscrimination, 0));
             edgeNeurites2 = filledEdges2 & ~cellBody;
             
             % Separate cell bodies from neurites; identify only neurites
@@ -552,7 +552,7 @@ classdef NeuronImageProcessor < handle
             
             
             
-%             bodies2 = imopen(filledEdges2 | nip.extendedCellBodyMask, strel('disk', nip.parameters.RemoveNeurites, 0));
+%             bodies2 = imopen(filledEdges2 | nip.extendedCellBodyMask, strel('disk', nip.parameters.CellBodyNeuriteDiscrimination, 0));
             
             % Isolate neurites
 %             sobelNeurites2 = filledEdges2 & ~bodies2;  
@@ -565,7 +565,7 @@ classdef NeuronImageProcessor < handle
             
             
 %             occupiedECB = imreconstruct(nip.openedCellBodyMask, nip.extendedCellBodyMask);
-% %             b = imopen(filledEdges2 | occupiedECB, strel('disk', nip.parameters.RemoveNeurites, 0));
+% %             b = imopen(filledEdges2 | occupiedECB, strel('disk', nip.parameters.CellBodyNeuriteDiscrimination, 0));
 %             n = filledEdges2 & ~occupiedECB;
 %             masks = nip.firstNeuriteMask | nip.secondNeuriteMask | n;
 %             ci = nip.cellImage;
@@ -585,8 +585,8 @@ classdef NeuronImageProcessor < handle
            background = nip.cellImage(~nip.secondCellMask);
            thresh3 = graythresh(background);
            thirdCellMask = im2bw(nip.cellImage, thresh3) | nip.secondCellMask;
-           newRadius = floor(nip.parameters.RemoveNeurites / 2);
-%            newRadius = nip.parameters.RemoveNeurites;
+           newRadius = floor(nip.parameters.CellBodyNeuriteDiscrimination / 2);
+%            newRadius = nip.parameters.CellBodyNeuriteDiscrimination;
            se = strel('disk', newRadius, 0);
            thirdNeuriteMask = (thirdCellMask & ~imopen(thirdCellMask, se)) | nip.secondNeuriteMask;
            thirdNeuriteMask = imreconstruct(nip.secondNeuriteMask, thirdNeuriteMask);
@@ -605,12 +605,12 @@ classdef NeuronImageProcessor < handle
         
         function status = closeNeuriteMask(nip)
             status = '';
-            trueSquare = true(nip.parameters.ConnectNeuriteSections);
+            trueSquare = true(nip.parameters.NeuriteBridgeLength);
 %            nip.closedNeuriteMask = imclose(nip.cellBodyNeuriteMask, trueSquare);
            nip.closedNeuriteMask = imclose(nip.thirdNeuriteMask, trueSquare);
-%nip.closedNeuriteMask = imclose(nip.secondNeuriteMask, strel('disk', nip.parameters.ConnectNeuriteSections, 0));
+%nip.closedNeuriteMask = imclose(nip.secondNeuriteMask, strel('disk', nip.parameters.NeuriteBridgeLength, 0));
 % Do two closings
-nip.closedNeuriteMask = imclose(nip.closedNeuriteMask, strel('disk', nip.parameters.ConnectNeuriteSections, 0));
+nip.closedNeuriteMask = imclose(nip.closedNeuriteMask, strel('disk', nip.parameters.NeuriteBridgeLength, 0));
 
             nip.closedConnectedNeuriteMask = imreconstruct(nip.secondConnectedNeuriteMask, nip.closedNeuriteMask);
             nip.closedUnconnectedNeuriteMask = nip.closedNeuriteMask & ~nip.closedConnectedNeuriteMask;
@@ -629,7 +629,7 @@ nip.closedNeuriteMask = imclose(nip.closedNeuriteMask, strel('disk', nip.paramet
             status = '';
             nip.graph = createGraph(nip.skeleton, nip.branchPoints, nip.endPoints, nip.cellBodyNumberGrid);
             % Do not remove spurs for now
-%             nip.graph.removeSpurs2(nip.parameters.RemoveNeurites);
+%             nip.graph.removeSpurs2(nip.parameters.CellBodyNeuriteDiscrimination);
             nip.graph.recordEdgeCount();
         end
 
@@ -637,7 +637,7 @@ nip.closedNeuriteMask = imclose(nip.closedNeuriteMask, strel('disk', nip.paramet
             status = '';
             nip.graph = newcreategraph7(nip.closedConnectedNeuriteMask, nip.openedCellBodyMask, nip.cellBodyNumberGrid, nip.numCellBodies);
 %             nip.graph = newcreategraph7(nip.connectedNeuriteMask, nip.firstCellMask, nip.cellBodyNumberGrid, nip.numCellBodies);
-%             nip.graph.removeSpurs2(nip.parameters.RemoveNeurites);
+%             nip.graph.removeSpurs2(nip.parameters.CellBodyNeuriteDiscrimination);
 %             nip.graph.recordEdgeCount();
         end
         

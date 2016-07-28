@@ -45,7 +45,7 @@ classdef NeuronGUI < handle
     
     methods
         function handle=getHandle(ngui)
-            if isempty(ngui.handle)%check if the figure windle has be created
+            if isempty(ngui.handle)%check if the figure window has be created
                 ngui.handle=figure;
                 handle=ngui.handle;
             else
@@ -103,7 +103,7 @@ classdef NeuronGUI < handle
             ngui.hControlpanel = controlpanelHandle; %handle of control panel window
             %hide the Figure Toolbar of the control panel window, name it,
             %and hide the number of the figure
-            set(ngui.hControlpanel, 'menubar', 'none', 'name', 'Control Panel','numbertitle','off'); 
+             set(ngui.hControlpanel, 'menubar', 'none', 'name', 'Control Panel','numbertitle','off'); 
         end
         function forwardButtonCallback(ngui,UIhandle,x)
             state=ngui.nip.getState();
@@ -329,6 +329,7 @@ classdef NeuronGUI < handle
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','white','FontSize',12,'FontWeight', 'bold')
+%commented for shooting video - 7/26/2016
                     [FileName, PathName]=uiputfile('*.*','Save parameters as');
                     parameterData=strcat(PathName, FileName)
                     ngui.nip.writeParametersFile(parameterData)

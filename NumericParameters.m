@@ -2,17 +2,17 @@ classdef NumericParameters < handle
     properties
         % As properties are added and removed, update the static
         % parameterType method that associates each property with its type.
-        SegmentBrightNuclei = []
-        SegmentDimNuclei = []
-        SeparateWeaklyConnectedNuclei  = []      % Disk size for post-threshold imopen
-        DetermineNucleiClusters = []      % Ratio for determining nucleus clusters
-        SingleNucleusSize = []
-        MinAcceptableNucleusSize  = []
-        CellBodiesandNeurites = []
-        RemoveNeurites = []   % Disk size for imopen to RemoveNeurites
-        SegmentNeurites = []
-        ImproveSegmentationQuality= []
-        ConnectNeuriteSections = []       % Size of square structuring element for imclose
+        BrightNucleiSelectivity = []
+        DimNucleiSelectivity = []
+        NucleiSeparationControl  = []      % Disk size for post-threshold imopen
+        NucleusClusterSensitivity = []      % Ratio for determining nucleus clusters
+        SingleNucleusSizeControl = []
+        MinimumAcceptableNucleusSizeControl = []
+        CellBodySelectivity = []
+        CellBodyNeuriteDiscrimination = []   % Disk size for imopen to CellBodyNeuriteDiscrimination
+        NeuriteSelectivity = []
+        SecondaryNeuriteSelectivity= []
+        NeuriteBridgeLength = []       % Size of square structuring element for imclose
  
         
         
@@ -28,17 +28,17 @@ classdef NumericParameters < handle
             if isempty(typesMap)
                 % Initialize typesMap
                 typesMap = NumericParameters.createTypesMap(...
-                    'SegmentBrightNuclei', NumericSubtype.POSITIVE,...
-                    'SegmentDimNuclei', NumericSubtype.POSITIVE,...
-                    'SeparateWeaklyConnectedNuclei', NumericSubtype.POSITIVE_INTEGER,...
-                    'DetermineNucleiClusters', NumericSubtype.POSITIVE_LE1,...
-                    'SingleNucleusSize', NumericSubtype.POSITIVE,...
-                    'MinAcceptableNucleusSize', NumericSubtype.POSITIVE,...
-                    'CellBodiesandNeurites', NumericSubtype.POSITIVE,...
-                    'SegmentNeurites', NumericSubtype.POSITIVE,...
-                    'ImproveSegmentationQuality', NumericSubtype.POSITIVE,...
-                    'RemoveNeurites', NumericSubtype.POSITIVE_INTEGER,...
-                    'ConnectNeuriteSections', NumericSubtype.POSITIVE_INTEGER...
+                    'BrightNucleiSelectivity', NumericSubtype.POSITIVE,...
+                    'DimNucleiSelectivity', NumericSubtype.POSITIVE,...
+                    'NucleiSeparationControl', NumericSubtype.POSITIVE_INTEGER,...
+                    'NucleusClusterSensitivity', NumericSubtype.POSITIVE_LE1,...
+                    'SingleNucleusSizeControl', NumericSubtype.POSITIVE,...
+                    'MinimumAcceptableNucleusSizeControl', NumericSubtype.POSITIVE,...
+                    'CellBodySelectivity', NumericSubtype.POSITIVE,...
+                    'NeuriteSelectivity', NumericSubtype.POSITIVE,...
+                    'SecondaryNeuriteSelectivity', NumericSubtype.POSITIVE,...
+                    'CellBodyNeuriteDiscrimination', NumericSubtype.POSITIVE_INTEGER,...
+                    'NeuriteBridgeLength', NumericSubtype.POSITIVE_INTEGER...
                     );
             end
             typ = typesMap(paramName);
@@ -85,32 +85,32 @@ classdef NumericParameters < handle
 
         % Parameters set during program development
         function initialize(np)
-            np.SegmentBrightNuclei = 1;
-            np.SegmentDimNuclei = 1;
-            np.SeparateWeaklyConnectedNuclei  = 3;
-            np.DetermineNucleiClusters = 0.95;
-            np.SingleNucleusSize = 1;
-            np.MinAcceptableNucleusSize  = 2;
-            np.CellBodiesandNeurites = 1;
-            np.SegmentNeurites = 1;
-            np.ImproveSegmentationQuality= 1.5;
-            np.RemoveNeurites = 5;
-            np.ConnectNeuriteSections = 3;
+            np.BrightNucleiSelectivity = 1;
+            np.DimNucleiSelectivity = 1;
+            np.NucleiSeparationControl  = 3;
+            np.NucleusClusterSensitivity = 0.95;
+            np.SingleNucleusSizeControl = 1;
+            np.MinimumAcceptableNucleusSizeControl   = 2;
+            np.CellBodySelectivity = 1;
+            np.NeuriteSelectivity = 1;
+            np.SecondaryNeuriteSelectivity= 1.5;
+            np.CellBodyNeuriteDiscrimination = 5;
+            np.NeuriteBridgeLength = 3;
         end
 
         % Optimized parameters 
         function initialize2(np)
-            np.CellBodiesandNeurites = 0.996921;
-            np.RemoveNeurites = 4.896013;
-            np.SegmentNeurites = 0.969891;
-            np.ImproveSegmentationQuality= 1.5;   % Parameter added after optimzation was done
-            np.ConnectNeuriteSections = 3.020864;
-            np.SegmentBrightNuclei = 1.013925 ;
-            np.SegmentDimNuclei = 1.036532;
-            np.SeparateWeaklyConnectedNuclei  = 2.961556;
-            np.DetermineNucleiClusters = 0.964889;
-            np.SingleNucleusSize = 1.055883;
-            np.MinAcceptableNucleusSize  = 2.003794;
+            np.CellBodySelectivity = 0.996921;
+            np.CellBodyNeuriteDiscrimination = 4.896013;
+            np.NeuriteSelectivity = 0.969891;
+            np.SecondaryNeuriteSelectivity= 1.5;   % Parameter added after optimzation was done
+            np.NeuriteBridgeLength = 3.020864;
+            np.BrightNucleiSelectivity = 1.013925 ;
+            np.DimNucleiSelectivity = 1.036532;
+            np.NucleiSeparationControl  = 2.961556;
+            np.NucleusClusterSensitivity = 0.964889;
+            np.SingleNucleusSizeControl = 1.055883;
+            np.MinimumAcceptableNucleusSizeControl   = 2.003794;
             np.rectify();
         end
         
@@ -256,17 +256,17 @@ classdef NumericParameters < handle
         end
         
         function str = toString(p)
-            str = sprintf('NumericParameters[SeparateWeaklyConnectedNuclei =%d', p.SeparateWeaklyConnectedNuclei );
-            str = sprintf('%s,RemoveNeurites=%d', str, p.RemoveNeurites);
-            str = sprintf('%s,DetermineNucleiClusters=%f', str, p.DetermineNucleiClusters);
-            str = sprintf('%s,ConnectNeuriteSections=%d', str, p.ConnectNeuriteSections);
-            str = sprintf('%s,CellBodiesandNeurites=%f', str, p.CellBodiesandNeurites);
-            str = sprintf('%s,SegmentNeurites=%f', str, p.SegmentNeurites);
-            str = sprintf('%s,ImproveSegmentationQuality=%f', str, p.ImproveSegmentationQuality);
-            str = sprintf('%s,SegmentBrightNuclei=%f', str, p.SegmentBrightNuclei);
-            str = sprintf('%s,SegmentDimNuclei=%f', str, p.SegmentDimNuclei);
-            str = sprintf('%s,MinAcceptableNucleusSize =%f', str, p.MinAcceptableNucleusSize );
-            str = sprintf('%s,SingleNucleusSize=%f]', str, p.SingleNucleusSize);
+            str = sprintf('NumericParameters[NucleiSeparationControl =%d', p.NucleiSeparationControl );
+            str = sprintf('%s,CellBodyNeuriteDiscrimination=%d', str, p.CellBodyNeuriteDiscrimination);
+            str = sprintf('%s,NucleusClusterSensitivity=%f', str, p.NucleusClusterSensitivity);
+            str = sprintf('%s,NeuriteBridgeLength=%d', str, p.NeuriteBridgeLength);
+            str = sprintf('%s,CellBodySelectivity=%f', str, p.CellBodySelectivity);
+            str = sprintf('%s,NeuriteSelectivity=%f', str, p.NeuriteSelectivity);
+            str = sprintf('%s,SecondaryNeuriteSelectivity=%f', str, p.SecondaryNeuriteSelectivity);
+            str = sprintf('%s,BrightNucleiSelectivity=%f', str, p.BrightNucleiSelectivity);
+            str = sprintf('%s,DimNucleiSelectivity=%f', str, p.DimNucleiSelectivity);
+            str = sprintf('%s,MinimumAcceptableNucleusSizeControl  =%f', str, p.MinimumAcceptableNucleusSizeControl  );
+            str = sprintf('%s,SingleNucleusSizeControl=%f]', str, p.SingleNucleusSizeControl);
         end
         
     end
