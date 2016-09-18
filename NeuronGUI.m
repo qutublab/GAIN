@@ -1,3 +1,4 @@
+%Version - 9.18.2016
 classdef NeuronGUI < handle
     properties
         nip
@@ -30,7 +31,6 @@ classdef NeuronGUI < handle
         waitbar
         batch
         controlHandles
-        instructionTextbox
         flag
         parent
         batchInput
@@ -40,6 +40,7 @@ classdef NeuronGUI < handle
         subPanel
         legend
         legend2
+        badDataWarning = false; % flag indicating if the user has been notified about invalid parameter in editbox
     end
     
     
@@ -63,19 +64,19 @@ classdef NeuronGUI < handle
                 'units', 'normalized',...
                 'Position',[0.005,0.72,0.12,0.18]);
             ngui.legend = uicontrol('Parent', ngui.subPanel,...
-                        'Style','text',... %instruction for each parameter
-                        'units', 'normalized',...
-                        'FontSize', 10,...%11.5 - 7/6
-                        'BackgroundColor', [0.9, 0.9, 0.9],...
-                        'HorizontalAlignment','left',...
-                        'position',[0, 0.5, 1, 0.5]);
+                'Style','text',... %instruction for each parameter
+                'units', 'normalized',...
+                'FontSize', 10,...%11.5 - 7/6
+                'BackgroundColor', [0.9, 0.9, 0.9],...
+                'HorizontalAlignment','left',...
+                'position',[0, 0.5, 1, 0.5]);
             ngui.legend2 = uicontrol('Parent', ngui.subPanel,...
-                        'Style','text',... %instruction for each parameter
-                        'units', 'normalized',...
-                        'FontSize', 10,...%11.5 - 7/6
-                        'BackgroundColor', [0.9, 0.9, 0.9],...
-                        'HorizontalAlignment','left',...
-                        'position',[0, 0, 1, 0.5]);
+                'Style','text',... %instruction for each parameter
+                'units', 'normalized',...
+                'FontSize', 10,...%11.5 - 7/6
+                'BackgroundColor', [0.9, 0.9, 0.9],...
+                'HorizontalAlignment','left',...
+                'position',[0, 0, 1, 0.5]);
         end
         function ngui=NeuronGUI(varargin)
             %             addpath('..')
@@ -93,17 +94,16 @@ classdef NeuronGUI < handle
             end
             ngui.parameters=ngui.nip.getParameters;
             p = ngui.parameters(12);
-            [editBoxes, nextActionTextbox,instructionTextbox, controlpanelHandle, buttonHandles, sliderHandles]=createControlPanel(ngui.parameters, ngui.nip.getActionName,@ngui.forwardButtonCallback, @ngui.backButtonCallback, @ngui.saveButtonCallback, @ngui.quitButtonCallback, @ngui.batchButtonCallback, @ngui.parameterButtonCallback, @ngui.sliderCallback, @ngui.editBoxCallback);
+            [editBoxes, nextActionTextbox, controlpanelHandle, buttonHandles, sliderHandles]=createControlPanel(ngui.parameters, ngui.nip.getActionName,@ngui.forwardButtonCallback, @ngui.backButtonCallback, @ngui.saveButtonCallback, @ngui.quitButtonCallback, @ngui.batchButtonCallback, @ngui.parameterButtonCallback, @ngui.sliderCallback, @ngui.editBoxCallback);
             ngui.editBoxes=editBoxes;
             ngui.hSlider = sliderHandles;
             ngui.nextActionTextbox=nextActionTextbox;
-            ngui.instructionTextbox = instructionTextbox;
             ngui.handle=[];
             ngui.controlHandles = buttonHandles; %handles of buttons on control panel
             ngui.hControlpanel = controlpanelHandle; %handle of control panel window
             %hide the Figure Toolbar of the control panel window, name it,
             %and hide the number of the figure
-             set(ngui.hControlpanel, 'menubar', 'none', 'name', 'Control Panel','numbertitle','off'); 
+            set(ngui.hControlpanel, 'menubar', 'none', 'name', 'Control Panel','numbertitle','off');
         end
         function forwardButtonCallback(ngui,UIhandle,x)
             state=ngui.nip.getState();
@@ -114,12 +114,35 @@ classdef NeuronGUI < handle
                 j=findjobj(ngui.editBoxes(1));%findjobj is a function from external resource
                 j.setCaretPosition(length(get(ngui.editBoxes(1),'string')));
             end
-            for i=1:numel(ngui.editBoxes);
-                valueString=get(ngui.editBoxes(i),'string');
-                ngui.parameters(i).value=valueString;
+            
+            if ngui.badDataWarning%if user has been notified about invalid parameter in editbox
+                ngui.badDataWarning=false;%flip the flag
+            else
+                for i=1:numel(ngui.editBoxes);
+                    valueString=get(ngui.editBoxes(i),'string');
+                    ngui.parameters(i).value=valueString;
+                end
+                status=ngui.nip.next(ngui.parameters);%call NIP
+                updateUser(ngui,status);
             end
-            status=ngui.nip.next(ngui.parameters);
-            updateUser(ngui,status);
+            %             cnt = 0;%count invalid values
+            %             for i=1:numel(ngui.editBoxes)-1;
+            %                 valueString=get(ngui.editBoxes(i+1),'string');
+            %                 ngui.parameters(i+1).value=valueString;
+            %                 number = str2num(ngui.parameters(i+1).value);
+            %                 if isempty(number) || isnan(number) || numel(number) ~= 1
+            %                     cnt = cnt+1;
+            %                 end
+            %
+            %             end
+            %             ngui.parameters(1).value = get(ngui.editBoxes(1),'string');%first edit box = image path
+            %             if cnt == 0
+            %             status=ngui.nip.next(ngui.parameters);
+            %             updateUser(ngui,status);
+            %             end
+            %
+            
+            
         end
         
         function updateUser(ngui,status)
@@ -136,15 +159,15 @@ classdef NeuronGUI < handle
                     J = ngui.nip.getNucleusImage();
                     h = figure(ngui.getHandle());
                     imshow(J)
-%                     set(ngui.instructionTextbox, 'string', 'Original nucleus image')%instruction textbox on control panel
-                    set(ngui.legend,'string',sprintf('%s\n%s\n%s','Original', 'Nucleus', 'Image'),'ForegroundColor', 'k') 
+                    %                     set(ngui.instructionTextbox, 'string', 'Original nucleus image')%instruction textbox on control panel
+                    set(ngui.legend,'string',sprintf('%s\n%s\n%s','Original', 'Nucleus', 'Image'),'ForegroundColor', 'k')
                     
                     
-%                     %Automatically update graphs when variables change
-%                     for i = 2:numel(ngui.editBoxes)
-%                         paraValue(i) = str2num(get(ngui.editBoxes(k+1),'String'));
-%                     end
-%                     linkdata on
+                    %                     %Automatically update graphs when variables change
+                    %                     for i = 2:numel(ngui.editBoxes)
+                    %                         paraValue(i) = str2num(get(ngui.editBoxes(k+1),'String'));
+                    %                     end
+                    %                     linkdata on
                     
                 case NIPState.SegmentedNucleusImageOnce;
                     I=ngui.nip.getFirstNucleusMask();
@@ -154,10 +177,10 @@ classdef NeuronGUI < handle
                     rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
                     rgb = addBorder(rgb, I, [0, 0, 1]);
-                    figure(ngui.getHandle());      
+                    figure(ngui.getHandle());
                     imshow(rgb)
                     figure(ngui.getHandle());%without this command, the subPanel will not be shown (?)
-%                    set(ngui.instructionTextbox, 'string', sprintf('blue - nuclei')) %instruction textbox on control panel
+                    %                    set(ngui.instructionTextbox, 'string', sprintf('blue - nuclei')) %instruction textbox on control panel
                     set(ngui.legend, 'String', sprintf('%s\n%s', 'Blue:', 'nuclei'), 'ForegroundColor', 'b')
                 case NIPState.SegmentedNucleusImageTwice
                     I=ngui.nip.getSecondNucleusMask();
@@ -199,7 +222,7 @@ classdef NeuronGUI < handle
                     rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
                     figure(ngui.getHandle);
                     imshow(rgb)
-%                     set(ngui.instructionTextbox, 'string', 'cyan - nuclei clusters')
+                    %                     set(ngui.instructionTextbox, 'string', 'cyan - nuclei clusters')
                     set(ngui.legend, 'String', sprintf('%s\n%s', 'Cyan:', 'nuclei clusters'), 'ForegroundColor', [0, 0.8, 0.8])
                 case NIPState.CalculatedNominalMeanNucleusArea
                     ngui.ndA = ngui.nip.getNucleusData();
@@ -249,7 +272,7 @@ classdef NeuronGUI < handle
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCluster(2,:),ngui.PCluster(1,:),ngui.NClusterText,'Color','white','FontSize',12,'FontWeight', 'bold')%'Color',[0, 0.5, 0.5]
-%                     set(ngui.instructionTextbox, 'string', 'magenta - nuclei too small')
+                    %                     set(ngui.instructionTextbox, 'string', 'magenta - nuclei too small')
                     set(ngui.legend, 'String', sprintf('%s\n%s','Magenta:', sprintf('%s\n%s', 'Nuclei too small', 'to be accepted')), 'ForegroundColor', 'magenta')
                 case NIPState.SegmentedCells
                     I = ngui.nip.getCellImage();
@@ -257,7 +280,7 @@ classdef NeuronGUI < handle
                     rgb = addBorder(I, CellMask, [1, 0, 0]);
                     figure(ngui.getHandle);
                     imshow(rgb)
-%                     set(ngui.instructionTextbox, 'string', 'red - cell bodies and neurites')
+                    %                     set(ngui.instructionTextbox, 'string', 'red - cell bodies and neurites')
                     set(ngui.legend, 'String', sprintf('%s\n%s\n%s','Cell', 'Image', 'Opened'))
                     set(ngui.legend2, 'String', 'Red: cell bodies and neurites', 'ForegroundColor', 'r')
                 case NIPState.SeparatedBodiesFromNeurites
@@ -301,7 +324,7 @@ classdef NeuronGUI < handle
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','white','FontSize',12,'FontWeight', 'bold')
-%                     set(ngui.instructionTextbox, 'string', sprintf('%s\n%s,', 'green - connected neurites', 'yellow - unconnected neurites'))
+                    %                     set(ngui.instructionTextbox, 'string', sprintf('%s\n%s,', 'green - connected neurites', 'yellow - unconnected neurites'))
                     set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'connected neurites'), 'ForegroundColor', [0, 0.9, 0])
                     set(ngui.legend2, 'String', sprintf('%s\n%s', 'Yellow:', 'unconnected neurites'), 'ForegroundColor', [0.78, 0.78, 0])
                 case NIPState.ResegmentedNeuriteEdges  %3rd Neurite Segmentation - added on 6/17/16
@@ -329,12 +352,12 @@ classdef NeuronGUI < handle
                     figure(ngui.getHandle);
                     imshow(rgb)
                     text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','white','FontSize',12,'FontWeight', 'bold')
-%commented for shooting video - 7/26/2016
+                    %commented for shooting video - 7/26/2016
                     [FileName, PathName]=uiputfile('*.*','Save parameters as');
                     parameterData=strcat(PathName, FileName)
                     ngui.nip.writeParametersFile(parameterData)
-                   set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'connected neurites'), 'ForegroundColor', [0, 0.9, 0])
-                   set(ngui.legend2, 'String', sprintf('%s\n%s', 'Yellow:', 'unconnected neurites'), 'ForegroundColor', [0.78, 0.78, 0])
+                    set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'connected neurites'), 'ForegroundColor', [0, 0.9, 0])
+                    set(ngui.legend2, 'String', sprintf('%s\n%s', 'Yellow:', 'unconnected neurites'), 'ForegroundColor', [0.78, 0.78, 0])
                 case NIPState.SkeletonizedNeurites
                     cns = ngui.nip.getConnectedNeuriteSkeleton();
                     uns = ngui.nip.getUnconnectedNeuriteSkeleton();
@@ -373,7 +396,7 @@ classdef NeuronGUI < handle
                 otherwise
                     error('[NeuronGUI.updateUser] Unexpected State: %s', char(state));
             end
-
+            
             
             %check if ngui.nip.getActionName will go beyond one line
             
@@ -383,7 +406,7 @@ classdef NeuronGUI < handle
             else
                 actionStr = ngui.nip.getActionName;
             end
-            set(ngui.nextActionTextbox,'string',actionStr);            
+            set(ngui.nextActionTextbox,'string',actionStr);
             
             %             set(ngui.instructionTextbox,'string',ngui.nip.getActionName);%instruction of each parameter;
             ngui.parameters=ngui.nip.getParameters;
@@ -399,21 +422,34 @@ classdef NeuronGUI < handle
                     set(ngui.hSlider(i-1),'Enable',enbl);
                 end
             end
-
+            
         end
         
         function backButtonCallback(ngui,UIhandle,x)
-           %If any parameter value is empty, cannot go back 
-            for i=2:numel(ngui.editBoxes) 
-                if isempty(get(ngui.editBoxes(i),'String'))
-                    warndlg('Empty parameter value is not allowed. Please select a value')
-                    return
-                end
-            end
-            status=ngui.nip.back();
-            updateUser(ngui,status);
             
+            if ngui.badDataWarning
+                ngui.badDataWarning = true;
+                
+            else
+%                 ngui.badDataWarning
+                %                 %If any parameter value is empty, cannot go back
+                %             for i=2:numel(ngui.editBoxes)
+                %                 if isempty(get(ngui.editBoxes(i),'String'))
+                %                     warndlg('Empty parameter value is not allowed. Please select a value')
+                %                     return
+                %                 end
+                %             end
+                for i=1:numel(ngui.editBoxes);
+                    valueString=get(ngui.editBoxes(i),'string');
+                    ngui.parameters(i).value=valueString;
+                end
+                status=ngui.nip.back(ngui.parameters);
+                updateUser(ngui,status);
+                
+            end
         end
+        
+        
         function quitButtonCallback(ngui,UIhandle, x)
             %             close all %need to check if that is sufficient
             if ishandle(ngui.handle)
@@ -428,42 +464,59 @@ classdef NeuronGUI < handle
             %hide the figure toolbar
             set(ngui.batch, 'menubar', 'none', 'name', 'Settings for Batch Processing','numbertitle','off');
             ngui.batch,%check if it is necessary
+            %temp
+            ngui.batch.Position(4) = 5/6*ngui.batch.Position(4); %decrease the height of the batch window - 9.18 
+            wBatch = 560; %the wdith of batch window - calibrated
+            hBatch = 350; %the height of batch window - calibrated
+            
+            bottom = 0;
             processButtonHandle = uicontrol('Style', 'pushbutton', 'String', 'Process',...
-                'Position', [410 0 150 50], 'Callback', @ngui.processButtonCallback, ...
+                'units', 'normalized',...
+                'Position', [410/wBatch bottom 150/wBatch 50/hBatch], 'Callback', @ngui.processButtonCallback, ...
                 'Enable', 'Off');
+            uicontrol('Style', 'pushbutton', 'String', 'Cancel',...%original name: Back to Control Panel - 9.16.2016
+                 'units', 'normalized',...
+                 'Position', [0 bottom 150/wBatch 50/hBatch], 'Callback', {@ngui.controlPanelButtonCallback});%close batch wondow and back to controlpanel
+            bottom_out = bottom + 125/hBatch;
             uicontrol('Style', 'pushbutton', 'String', 'Output Directory',...
-                'Position', [0 350 100 25], 'Callback', {@ngui.outputButtonCallback, processButtonHandle});
-            uicontrol('Style', 'pushbutton', 'String', 'Input Directory',...
-                'Position', [0 260 100 25], 'Callback', {@ngui.inputButtonCallback, processButtonHandle});
+                 'units', 'normalized',...
+                'Position', [0 bottom_out 100/wBatch 25/hBatch], 'Callback', {@ngui.outputButtonCallback, processButtonHandle});
+            bottom_infile = bottom +215/hBatch;
+            bottom_indir = bottom_infile+75/hBatch;
             uicontrol('Style', 'pushbutton', 'String', 'Input Files',...
-                'Position', [0 185 100 25], 'Callback', {@ngui.inputFileButtonCallback, processButtonHandle});
-            controlPanelButtonHandle = uicontrol('Style', 'pushbutton', 'String', 'Back to Control Panel',...
-                'Position', [0 0 150 50], 'Callback', {@ngui.controlPanelButtonCallback});
+                 'units', 'normalized',...
+                'Position', [0 bottom_infile 100/wBatch 25/hBatch], 'Callback', {@ngui.inputFileButtonCallback, processButtonHandle});
+            uicontrol('Style', 'pushbutton', 'String', 'Input Directory',...
+                 'units', 'normalized',...
+                'Position', [0 bottom_indir 100/wBatch 25/hBatch], 'Callback', {@ngui.inputButtonCallback, processButtonHandle});
+            
+            %             set(ngui.batch, 'Position', [0.01 0.06 wControlPanel_rel hgtControlPanel_rel]);%Auto resize the window to fit the user's screen
             uicontrol('Style','text',... % a sign between "input dir" and "input files" buttons
-                'units', 'pixels',...
+                'units', 'normalized',...
                 'string','Or',...
-                'FontSize', 11, ...
-                'position', [35 225 30 20])
+                'FontUnits', 'normalized',...
+                'FontSize', 0.8,...
+                'position', [35/wBatch bottom_infile+40/hBatch 30/wBatch 20/hBatch])
             
             ngui.flag = 0; %set the flag to be 0
             
-            ngui.batchOutput = uicontrol('Style', 'edit', 'String', ' ', 'Units', 'pixels',...
-                'Position', [110 350 400 25],'HorizontalAlignment','left', ...
+            ngui.batchOutput = uicontrol('Style', 'edit', 'String', ' ',  'units', 'normalized',...
+                'Position', [110/wBatch bottom_out-25/hBatch 400/wBatch 50/hBatch],'HorizontalAlignment','left', ...
                 'Max', 100, 'Enable', 'on');
             jOutput=findjobj(ngui.batchOutput,'nomenu'); %get the UIScrollPane container
             jOutput=jOutput.getComponent(0).getComponent(0);
             set(jOutput,'Editable',0);
             
-            ngui.batchInput = uicontrol('Style', 'edit', 'Units', 'pixels',...
+            ngui.batchInput = uicontrol('Style', 'edit',  'units', 'normalized',...
                 'string', ' ', ...
                 'Max', 100,...
-                'Position', [110 185 400 100],'HorizontalAlignment','left', ...
+                'Position', [110/wBatch bottom_infile 400/wBatch 100/hBatch],'HorizontalAlignment','left', ...
                 'Enable', 'on');%off 6/28
             
             jInput=findjobj(ngui.batchInput,'nomenu'); %get the UIScrollPane container
             jInput=jInput.getComponent(0).getComponent(0);
             set(jInput,'Editable',0);
-
+            
             
             for k = 1:length(ngui.controlHandles)
                 set(ngui.controlHandles{k},'Enable','off')
@@ -475,11 +528,13 @@ classdef NeuronGUI < handle
             set(ngui.batch, 'CloseRequestFcn',@ngui.controlPanelButtonCallback)
             
         end
-        function controlPanelButtonCallback(ngui,UIhandle, x) %back to control panel
+        function controlPanelButtonCallback(ngui,UIhandle, x) %back to control panel(cancel button)
             %                 error('Terminate batch processing.')
             
             ngui.flag = 1;%clicking the button changes the flag - which terminates the processing
+            if ishandle(ngui.batch)
             close(ngui.batch)   %close batch processing window
+            end
             %             if ishandle(ngui.waitbar), close(ngui.waitbar), end %close the waitbar window if it is open
             %             close(ngui.waitbar)
             for k = 1:length(ngui.controlHandles)
@@ -489,7 +544,14 @@ classdef NeuronGUI < handle
         
         function outputButtonCallback(ngui, UIhandle, x, processButtonHandle)
             ngui.dirout=uigetdir('*.*','Store Data');
-            set(ngui.batchOutput,'string', ngui.dirout);
+            
+            if ischar(ngui.dirout) %if the directory is valid (is a string)
+                set(ngui.batchOutput,'string', ngui.dirout);
+            else
+                set(ngui.batchOutput,'string', '');%if not, don't show it on the editbox
+            end
+           
+            
             if ~isempty(ngui.dirout) && ischar(ngui.dirout) %matlab returns numerical 0 when nothing is selected
                 ngui.enableProcessOut = 'On';
             else
@@ -506,9 +568,14 @@ classdef NeuronGUI < handle
         end
         
         function inputButtonCallback(ngui, UIhandle, x, processButtonHandle)%get directory input
+            %reset ngui.filein, since ngui.dirin is going to be used, not ngui.filein
+            ngui.filein = [];
             ngui.dirin=uigetdir('*.*','Image File');
+            if ischar(ngui.dirin)%if the directory is valid (is a string)
             set(ngui.batchInput, 'string', ngui.dirin)
-            
+            else set(ngui.batchInput,'string', '');%if not, don't show it on the editbox
+            end
+                
             if ~isempty(ngui.dirin) && ischar(ngui.dirin) %matlab returns numerical 0 when nothing is selected
                 ngui.enableProcessIn = 'On';
             else
@@ -523,6 +590,8 @@ classdef NeuronGUI < handle
         end
         
         function inputFileButtonCallback(ngui, UIhandle, x, processButtonHandle)%get files input
+            %reset ngui.dirin, since ngui.filein is going to be used, not ngui.dirin
+            ngui.dirin = [];
             [file,path]=uigetfile('*.*','Image File', 'MultiSelect','on');%same path for the files
             if iscell(file) %if more then 1 file is selected (cell array)
                 ngui.filein = cell(1, length(file));
@@ -552,11 +621,14 @@ classdef NeuronGUI < handle
         
         function parameterButtonCallback(ngui, UIhandle, x) %call back for button "Open Parameter File"
             [FileName, PathName] = uigetfile('*.*', 'Select Parameters File');
-            ngui.altparam = ngui.nip.readParametersFile(strcat(PathName, FileName));
+            ngui.altparam = ngui.nip.readParametersFile(strcat(PathName, FileName));%check the status    
             if ~isempty(ngui.altparam)
-                error(ngui.altparam)
+                errordlg(ngui.altparam,'Error')
+                return
             end
+            
             ngui.parameters=ngui.nip.getParameters;
+            
             [editBoxesnew, hSlidernew] = updateControlPanel(ngui.editBoxes, ngui.parameters, ngui.h, ngui.hSlider);
             ngui.editBoxes=editBoxesnew;
             ngui.hSlider=hSlidernew;
@@ -578,35 +650,48 @@ classdef NeuronGUI < handle
             tElapsed = 600;%initial guess of the processing time for an image = 10 min
             
             if iscell(namelist) % if the input is more than one file
-            currentWait = round(tElapsed*(length(namelist))/60,1);
-            ngui.waitbar = waitbar(1/length(namelist), ['Processing Image 1 of ' num2str(length(namelist)) ' Approximate Time: ' num2str(currentWait) 'minutes'])
-            for i = 1:length(namelist)
-                if ngui.flag == 1, break,end %check the flag. If button "back to control panel" is clicked, flag = 1, otherwise flag = 0
-                tStart = tic;
-                ngui.nip.oneProcess(namelist{i}, ngui.dirout);
-                tElapsed = toc(tStart)
-                currentWait = round(tElapsed*(length(namelist)-i)/60,1);
-                
-                if i<length(namelist)
-                    waitbar((i+1)/length(namelist), ngui.waitbar, ['Processing Image ' num2str(i+1) 'of ' num2str(length(namelist)) ' Approximate Time: ' num2str(currentWait) 'minutes'])
-                else
-                    close(ngui.waitbar)
+                currentWait = round(tElapsed*(length(namelist))/60,1);
+                ngui.waitbar = waitbar(1/length(namelist), ['Processing Image 1 of ' num2str(length(namelist)) ' Approximate Time: ' num2str(currentWait) 'minutes'])
+                for i = 1:length(namelist)
+                    if ngui.flag == 1, break,end %check the flag. If button "back to control panel" is clicked, flag = 1, otherwise flag = 0
+                    tStart = tic;
+                    ngui.nip.oneProcess(namelist{i}, ngui.dirout);
+                    tElapsed = toc(tStart)
+                    currentWait = round(tElapsed*(length(namelist)-i)/60,1);
+                    
+                    if i<length(namelist)
+                        waitbar((i+1)/length(namelist), ngui.waitbar, ['Processing Image ' num2str(i+1) 'of ' num2str(length(namelist)) ' Approximate Time: ' num2str(currentWait) 'minutes'])
+                    else
+                        close(ngui.waitbar)
+                    end
                 end
-            end
             else  %if the input is only one file
                 currentWait = round(tElapsed/60,1);
                 ngui.waitbar = waitbar(1, ['Processing Image 1 of 1  Approximate Time: ' num2str(currentWait) 'minutes'])
                 tStart = tic;
                 ngui.nip.oneProcess(namelist, ngui.dirout);
                 tElapsed = toc(tStart)
-                close(ngui.waitbar)     
+                close(ngui.waitbar)
             end
         end
         
         function saveButtonCallback(ngui, UIhandle, x)
+            
             [FileName, PathName]=uiputfile('*.*','Save parameters as');
-            parameterData=strcat(PathName, FileName);
-            ngui.nip.writeParametersFile(parameterData);
+            %Do nothing if the file name or path name is a character array
+            %when the user cancels the pop-up window, FileName and PathName
+            %will be 0 (double).
+            if ischar(FileName) && ischar(PathName)
+                parameterData=strcat(PathName, FileName);
+                %get status
+                
+                status = ngui.nip.writeParametersFile(parameterData);
+                if ~isempty(status)
+                    errordlg(status,'Error')
+                    return
+                end
+                
+            end
         end
         
         function sliderCallback(ngui, UIhandle, x)
@@ -618,28 +703,83 @@ classdef NeuronGUI < handle
                 set(ngui.editBoxes(k+1),'String', sliderValue{k})
             end
             
-
+            
             
             
         end
         
-        function editBoxCallback(ngui, UIhandle, x)
-            num = length(ngui.hSlider);%num of sliders
-            textValue = zeros(1,num);
-            for k = 1:num
-                if ~isempty(get(ngui.editBoxes(k+1),'String'))
-                textValue(k) = str2num(get(ngui.editBoxes(k+1),'String'));
-                set(ngui.hSlider(k),'Value', textValue(k))
-                else
+        function editBoxCallback(ngui, UIhandle, x, paraName,subtype, editBoxID)
+            newValueStr = get(UIhandle, 'String');
+            newValueNum = str2num(newValueStr);
+            status = subtype.check(newValueNum);
+            if isempty(status)
+                ngui.badDataWarning = false;%no bad data
+                textValue = newValueNum;
+                sliderID = editBoxID-1;
+                set(ngui.hSlider(sliderID),'Value', textValue)
+                if (newValueNum > ngui.hSlider(sliderID).Max) && (newValueNum ~= inf)
+                    set(ngui.hSlider(sliderID),'Max', newValueNum)
                 end
+            else
+                ngui.badDataWarning = true;%badData has been detected
+                errordlg(strcat('Parameter',{' '} , paraName, {': '}, status))
             end
-      
-      
+            %             if isempty(newValueNum)
+            %                 errordlg(strcat('The value of parameter', paraName, 'is invalid. It must be a number or Inf.'))
+            %                 ngui.badDataWarning = true;%badData has been detected
+            %             elseif  isnan(newValueNum)
+            %                 errordlg(strcat('The value of parameter', paraName, ' is Not a Number. It must be a number or Inf.'))
+            %                 ngui.badDataWarning = true;%badData has been detected
+            %             elseif numel(newValueNum) ~= 1
+            %                 errordlg(strcat('The value of parameter', paraName, ' is not a single number'))
+            %                 ngui.badDataWarning = true;%badData has been detected
+            %             else
+            %                 ngui.badDataWarning = false;%no bad data
+            %                 textValue = newValueNum;
+            %                 set(ngui.hSlider,'Value', textValue)
+            %                 if (newValueNum > ngui.hSlider.Max) && (newValueNum ~= inf)
+            %                     set(ngui.hSlider,'Max', newValueNum)
+            %                 end
+            %                 ngui.badDataWarning
+            %             num = length(ngui.hSlider);%num of sliders
+            %             textValue = zeros(1,num);
+            %             for k = 1:num
+            %                 newValueStr = get(ngui.editBoxes(k+1),'String'); %new parameter value string
+            %                 newValueNum = str2num(newValueStr); %new parameter value number
+            %                 if isempty(newValueNum)
+            %                     errordlg(strcat('The value of parameter', num2str(k), 'is invalid. It must be a number or Inf.'))
+            %                     ngui.badDataWarning = true;%badData has been detected
+            %                 elseif  isnan(newValueNum)
+            %                     errordlg(strcat('The value of parameter', num2str(k), ' is Not a Number. It must be a number or Inf.'))
+            %                     ngui.badDataWarning = true;%badData has been detected
+            %                 elseif numel(newValueNum) ~= 1
+            %                     errordlg(strcat('The value of parameter', num2str(k), ' is not a single number'))
+            %                     ngui.badDataWarning = true;%badData has been detected
+            %                 else
+            %                     ngui.badDataWarning = false;%no bad data
+            %                     textValue(k) = newValueNum;
+            %                     set(ngui.hSlider(k),'Value', textValue(k))
+            %                     if (newValueNum > ngui.hSlider(k).Max) && (newValueNum ~= inf)
+            %                     set(ngui.hSlider(k),'Max', newValueNum)
+            %                     end
+            %                  end
+            
             
         end
         
         
-        %         function
-        %         end
+        
     end
+    
+    
+    %         function
+    %         end
 end
+
+
+
+
+
+
+
+

@@ -6,6 +6,7 @@ classdef OneParameter < handle
         active
         lineNum = []
         description
+        subtype
     end
     
     methods
