@@ -150,8 +150,9 @@ classdef NeuronImageProcessor < handle
             status = nip.parameters.writeToFile(fileName);
         end
 
-        function status = back(nip)
-            status='';
+        function status = back(nip, oneParamArr)
+            status = nip.parameters.update(oneParamArr);
+            if ~strcmp(status, '') return; end
             if (nip.state ~= NIPState.Ready)
                 nip.state = NIPState(uint16(nip.state) - 1); 
             end
@@ -240,6 +241,8 @@ classdef NeuronImageProcessor < handle
                     activate = 10;
                 case NIPState.ResegmentedNeurites
                     activate = 11;
+                case NIPState.ResegmentedNeuriteEdges
+                    activate = 12;
                 case NIPState.ClosedNeuriteMask
                     activate = [];
                 
@@ -247,6 +250,12 @@ classdef NeuronImageProcessor < handle
                     activate = [];
                 otherwise error('[NeuronImageProcessor.getParameters] Unexpected state: %s', char(nip.state));
             end
+
+	    % Always activate the branchResolutionDistance parameter because
+            % currenty, the GUI does not allow the user to step through to
+            % its use.
+            activate = [activate, 13];
+
             for i = 1:numel(activate)
                 oneParamArr(activate(i)).active = true;
             end
@@ -405,10 +414,10 @@ classdef NeuronImageProcessor < handle
                     nip.nucleusDataArr(i).small = false;
                 end
             end
-            assignNucleusCounts(nip.cellBodyNumberGrid, ...
-                nip.nucleusAllLabeled, nip.cellBodyDataArr, ...
-                nip.nucleusDataArr, nip.nominalMeanNucleusArea, ...
-                nip.minNucleusArea);
+%            assignNucleusCounts(nip.cellBodyNumberGrid, ...
+%                nip.nucleusAllLabeled, nip.cellBodyDataArr, ...
+%                nip.nucleusDataArr, nip.nominalMeanNucleusArea, ...
+%                nip.minNucleusArea);
 %for i = 1:numel(nip.cellBodyDataArr)
 %fprintf('[NeuronImageProcessor.calculateMinNucleusArea] %d: numberOfNuclei=%d\n', i, nip.cellBodyDataArr(i).numberOfNuclei);
 %end
@@ -430,6 +439,7 @@ classdef NeuronImageProcessor < handle
             se = strel('disk', nip.parameters.neuriteRemovalDiskRadius, 0);
             nip.openedCellBodyMask = imfill(imopen(nip.firstCellMask, se), 'holes');
             nip.firstNeuriteMask = nip.firstCellMask & ~nip.openedCellBodyMask;
+            nip.firstNeuriteMask = bwareaopen(nip.firstNeuriteMask, 2);
             nip.firstConnectedNeuriteMask = imreconstruct(nip.openedCellBodyMask, nip.firstCellMask) & nip.firstNeuriteMask;
             nip.firstUnconnectedNeuriteMask = nip.firstNeuriteMask & ~ nip.firstConnectedNeuriteMask;
             [nip.cellBodyNumberGrid nip.numCellBodies] = bwlabel(nip.openedCellBodyMask);
@@ -454,7 +464,8 @@ classdef NeuronImageProcessor < handle
             nip.extendedCellBodyMask = imopen(nip.secondCellMask, se);
             % Isolate neurites
             nip.secondNeuriteMask = (nip.secondCellMask & ~nip.extendedCellBodyMask) | nip.firstNeuriteMask;
-            
+            nip.secondNeuriteMask = bwareaopen(nip.secondNeuriteMask,2);
+            figure, imshow(double(cat(3, nip.openedCellBodyMask,nip.firstNeuriteMask, nip.secondNeuriteMask)))
 
             % Use edge detection as an additional way to find neurites
             nip.gradientMag = imgradient(nip.cellImage);
@@ -598,12 +609,8 @@ classdef NeuronImageProcessor < handle
         
         function status = closeNeuriteMask(nip)
             status = '';
-            trueSquare = true(nip.parameters.tujClosingSquareSide);
-%            nip.closedNeuriteMask = imclose(nip.cellBodyNeuriteMask, trueSquare);
-           nip.closedNeuriteMask = imclose(nip.thirdNeuriteMask, trueSquare);
-%nip.closedNeuriteMask = imclose(nip.secondNeuriteMask, strel('disk', nip.parameters.tujClosingSquareSide, 0));
-% Do two closings
-nip.closedNeuriteMask = imclose(nip.closedNeuriteMask, strel('disk', nip.parameters.tujClosingSquareSide, 0));
+
+            nip.closedNeuriteMask = imclose(nip.thirdNeuriteMask, strel('disk', nip.parameters.tujClosingDiskRadius, 0));
 
             nip.closedConnectedNeuriteMask = imreconstruct(nip.secondConnectedNeuriteMask, nip.closedNeuriteMask);
             nip.closedUnconnectedNeuriteMask = nip.closedNeuriteMask & ~nip.closedConnectedNeuriteMask;
@@ -620,9 +627,8 @@ nip.closedNeuriteMask = imclose(nip.closedNeuriteMask, strel('disk', nip.paramet
         
 	function status = createNeuriteGraph(nip)
             status = '';
-            nip.graph = createGraph(nip.skeleton, nip.branchPoints, nip.endPoints, nip.cellBodyNumberGrid);
-            % Do not remove spurs for now
-%             nip.graph.removeSpurs2(nip.parameters.neuriteRemovalDiskRadius);
+            nip.graph = createGraph(nip.skeleton, nip.branchPoints, nip.endPoints, nip.cellBodyNumberGrid, nip.parameters.neuriteRemovalDiskRadius);
+            nip.graph.removeSpurs4();
             nip.graph.recordEdgeCount();
         end
 
@@ -637,7 +643,7 @@ nip.closedNeuriteMask = imclose(nip.closedNeuriteMask, strel('disk', nip.paramet
         
         function status = findLongPaths(nip)
             status = '';
-            computeLongPaths(nip.cellBodyDataArr, nip.graph);
+            computeLongPaths(nip.cellBodyDataArr, nip.graph, nip.parameters.branchResolutionDistance);
         end
 
 

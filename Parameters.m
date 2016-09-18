@@ -21,9 +21,11 @@ classdef Parameters < NumericParameters
                 if typ.isIntegerType()
                     valueStr = sprintf('%d', paramVec(i));
                 else
-                    valueStr = sprintf('%f', paramVec(i));
+                    valueStr = sprintf('%g', paramVec(i));
                 end
                 oneParamArr(i) = OneParameter(propNames{i}, valueStr, false);
+                oneParamArr(i).subtype = typ;
+                oneParamArr(i).description = NumericParameters.parameterDescription(propNames{i});
             end
         end
         

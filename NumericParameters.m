@@ -12,8 +12,9 @@ classdef NumericParameters < handle
         neuriteRemovalDiskRadius = []   % Disk size for imopen to remove neurites
         tujThreshFactor2 = []
         tujThreshFactor3 = []
-        tujClosingSquareSide = []       % Size of square structuring element for imclose
- 
+%        tujClosingSquareSide = []       % Size of square structuring element for imclose
+        tujClosingDiskRadius = []       % Size of square structuring element for imclose
+        branchResolutionDistance = [] 
         
         
         
@@ -21,6 +22,45 @@ classdef NumericParameters < handle
     end
     
     methods (Static)
+        function desc = parameterDescription(paramName)
+            persistent descMap;
+            if isempty(descMap)
+                % Allocate map with proerty names as both keys and values
+                keySet = properties(NumericParameters);
+                descMap = containers.Map(keySet, keySet);
+
+                % Add correct property descriptions
+		descMap('dapiThreshFactor1') = ...
+'This parameter adjusts the selectivity to bright nuclei\nLow: segment more nuclei\nHigh; segment more nuclei\nSetting this parameter to ''inf'' efecftively skips this image processing step';
+		descMap('dapiThreshFactor2') = ...
+'This parameter adjusts the selectivity to dim nuclei\nLow: segment more nuclei\nHigh; segment more nuclei\nSetting this parameter to ''inf'' efecftively skips this image processing step';
+		descMap('nucleusOpenDiskRadius') = ...
+'This parameter controls the separation of weakly connected nucleus objects\nLow:fewer nuclei separated\nHigh: more nuclei separated\nSetting this parameter to 1 effectivey skips this image processing step';
+		descMap('areaToConvexHullRatio') = ...
+'This parameter controls the sensitivity to clusters of nuclei\nLow: more objects are identified as individual nuclei\nHigh: more objects are identified as nucleus clusters';
+		descMap('medianNucleusAdjustmentFactor') = ...
+'This parameter adjusts the typical nucleus area used to count nuclei in clusters\nLow: more nuclei per cluster\nHigh: fewer nuclei per cluster';
+		descMap('median2MinimumNucleusAreaRatio') = ...
+'This parameter modifies the typical nucleus area in order to determine the minimum size of a single nucleus\nLow: smaller objects identified as nuclei\nHigh: Smaller objects are not identified as nuclei';
+		descMap('tujThreshFactor1') = ...
+'This parameter controls the selectivity of cell bodies\n Low: larger cell bodies\nHigh: smaller cell bodies\nSetting this parameter to ''inf'' effectively skips this image processing step';
+		descMap('neuriteRemovalDiscRadius') = ...
+'This parameter determines how neurites are separated from cell bodies\nLow: narrower neurites\nHigh: wider neurites\nSetting this parameter to 1 effectively skips this image processing step';
+		descMap('tujThreshFactor2') = ...
+'This parameter controls the selectivity of neurite identification by intensity threshold\nLow: more pixels as parts of neurites\nHigh: fewer pixels as parts of neurites\nSetting this parameter to ''inf'' effectively skips this image processing step';
+		descMap('tujThreshFactor3') = ...
+'This parameter controls the selectivity of neurite identification by edge detection\nLow: more pixels as parts of neurites\nHigh: fewer pixels as parts of neurites\nSetting this parameter to ''inf'' effectively skips this image processing step';
+		descMap('tujClosingDiskRadius') = ...
+'This parameter controls the degree of neurite interpolation\nLow: bridge smaller gaps between neurites\nHigh: Bridge larger gaps bewteen neurites\nSetting this parameter to 0 effectively skips this image processing step';
+		descMap('branchResolutionDistance') = ...
+'This parameter determines how neurite bends affect branch resolution\nLow: more sensitive to early bends\nHigh: less sensitive to early bends';
+
+
+            end
+            % Use sprintf to force \n to become newline characters
+            desc = sprintf(descMap(paramName));
+            end
+
         % Returns a NumericSubtype value indicating the type of numeric
         % values that can be assigned to a property
         function typ = parameterType(paramName)
@@ -38,7 +78,8 @@ classdef NumericParameters < handle
                     'tujThreshFactor2', NumericSubtype.POSITIVE,...
                     'tujThreshFactor3', NumericSubtype.POSITIVE,...
                     'neuriteRemovalDiskRadius', NumericSubtype.POSITIVE_INTEGER,...
-                    'tujClosingSquareSide', NumericSubtype.POSITIVE_INTEGER...
+                    'tujClosingDiskRadius', NumericSubtype.NONNEGATIVE_INTEGER,...
+                    'branchResolutionDistance', NumericSubtype.POSITIVE ...
                     );
             end
             typ = typesMap(paramName);
@@ -95,7 +136,9 @@ classdef NumericParameters < handle
             np.tujThreshFactor2 = 1;
             np.tujThreshFactor3 = 1.5;
             np.neuriteRemovalDiskRadius = 5;
-            np.tujClosingSquareSide = 3;
+%            np.tujClosingSquareSide = 3;
+            np.tujClosingDiskRadius = 3;
+            np.branchResolutionDistance = 9;
         end
 
         % Optimized parameters 
@@ -104,13 +147,15 @@ classdef NumericParameters < handle
             np.neuriteRemovalDiskRadius = 4.896013;
             np.tujThreshFactor2 = 0.969891;
             np.tujThreshFactor3 = 1.5;   % Parameter added after optimzation was done
-            np.tujClosingSquareSide = 3.020864;
+%            np.tujClosingSquareSide = 3.020864;
+            np.tujClosingDiskRadius = 3;  % Closing changed to disk 8/19/2016
             np.dapiThreshFactor1 = 1.013925 ;
             np.dapiThreshFactor2 = 1.036532;
             np.nucleusOpenDiskRadius = 2.961556;
             np.areaToConvexHullRatio = 0.964889;
             np.medianNucleusAdjustmentFactor = 1.055883;
             np.median2MinimumNucleusAreaRatio = 2.003794;
+            np.branchResolutionDistance = 9;  % Parameter added after optimzation was done
             np.rectify();
         end
         
@@ -259,7 +304,8 @@ classdef NumericParameters < handle
             str = sprintf('NumericParameters[nucleusOpenDiskRadius=%d', p.nucleusOpenDiskRadius);
             str = sprintf('%s,neuriteRemovalDiskRadius=%d', str, p.neuriteRemovalDiskRadius);
             str = sprintf('%s,areaToConvexHullRatio=%f', str, p.areaToConvexHullRatio);
-            str = sprintf('%s,tujClosingSquareSide=%d', str, p.tujClosingSquareSide);
+%            str = sprintf('%s,tujClosingSquareSide=%d', str, p.tujClosingSquareSide);
+            str = sprintf('%s,tujClosingDiskRadius=%d', str, p.tujClosingDiskRadius);
             str = sprintf('%s,tujThreshFactor1=%f', str, p.tujThreshFactor1);
             str = sprintf('%s,tujThreshFactor2=%f', str, p.tujThreshFactor2);
             str = sprintf('%s,tujThreshFactor3=%f', str, p.tujThreshFactor3);
@@ -267,6 +313,7 @@ classdef NumericParameters < handle
             str = sprintf('%s,dapiThreshFactor2=%f', str, p.dapiThreshFactor2);
             str = sprintf('%s,median2MinimumNucleusAreaRatio=%f', str, p.median2MinimumNucleusAreaRatio);
             str = sprintf('%s,medianNucleusAdjustmentFactor=%f]', str, p.medianNucleusAdjustmentFactor);
+            str = sprintf('%s,branchResolutionDistance=%f', str, p.branchResolutionDistance);
         end
         
     end
