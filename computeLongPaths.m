@@ -1,9 +1,9 @@
 
 
-function computeLongPaths(neuronBodyDataArr, G)
+function computeLongPaths(neuronBodyDataArr, G, junctionSpan)
 
 totalNeuriteLength = 0;
-for d = 1:numel(neuronBodyDataArr)
+for d =  1:numel(neuronBodyDataArr)  
     longPaths = Stack();
     shortPaths = Stack();
     fprintf('Looking for paths from cluster %d of %d\n', d, numel(neuronBodyDataArr));
@@ -13,10 +13,7 @@ for d = 1:numel(neuronBodyDataArr)
         numCells = max(1, nbd.numberOfNuclei);
         avgArea = nbd.bodyArea / numCells;
         avgDiameter = sqrt((4 * avgArea) / pi);
-%fprintf('Parameterize minNeuriteLength multiplier !!!\n');
         minNeuriteLength = 3 * avgDiameter;
-fprintf('Parameterize junctionSpan !!!\n');
-        junctionSpan = 9;
         fprintf('[computeLongPaths] Computing walks for neuron body: %d\n', d);
 %         tic;
         pathStack = G.allStraightWalksFromTujBody(d, junctionSpan);

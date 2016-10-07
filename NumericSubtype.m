@@ -3,6 +3,7 @@ classdef NumericSubtype
         POSITIVE,
         POSITIVE_INTEGER,
         POSITIVE_LE1
+        NONNEGATIVE_INTEGER,
     end
   
     methods
@@ -13,6 +14,8 @@ classdef NumericSubtype
                 case NumericSubtype.POSITIVE_INTEGER
                     isInt = true;
                 case NumericSubtype.POSITIVE_LE1
+                    isInt = false;
+                case NumericSubtype.NONNEGATIVE_INTEGER
                     isInt = false;
                 otherwise
                     error('[NumericSubtype.isIntegerType] Unexpected value: ', char(nst));
@@ -35,12 +38,16 @@ classdef NumericSubtype
                         status = 'Value is not a positive number';
                     end
                 case NumericSubtype.POSITIVE_INTEGER
-                    if ~((num -floor(num) == 0) && num > 0)
+                    if ~((num - floor(num) == 0) && num > 0)
                         status = 'Value is not a positive integer';
                     end
                 case NumericSubtype.POSITIVE_LE1
                     if ~(num > 0 && num <= 1)
                         status = 'Value is not positive and less than or equal to 1';
+                    end
+                case NumericSubtype.NONNEGATIVE_INTEGER
+                    if ~((num - floor(num) == 0) && num >= 0)
+                        status = 'Value is not a non-negative integer';
                     end
                 otherwise
                     error('[NumericSubtype.check] Unexpected subtype:,%s', char(nst));
@@ -70,6 +77,8 @@ classdef NumericSubtype
                     n2 = max(1, round(n));
                 case NumericSubtype.POSITIVE_LE1
                     n2 = min(1, max(n, realmin));
+                case NumericSubtype.NONNEGATIVE_INTEGER
+                    n2 = max(0, round(n));
                 otherwise
                     error('[NumericSubtype.rectify] Unexpected subtype:,%s', char(nst));
 

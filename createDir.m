@@ -9,7 +9,7 @@ switch exist(dirName)
         success = true;
     otherwise
         % Some other object possibly a file exists with the name
-        delete(outputDir);
+        delete(dirName);
         [success message messageid] = mkdir(dirName);
 end
 if ~success

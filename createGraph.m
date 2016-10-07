@@ -2,7 +2,7 @@
 % This is an amended version of newcreategraph7. Changed so that after ring
 % removal, neurites are extended to tuj bodies.
 
-function G = createGraph(mask, endPoints, branchPoints, cellNumberGrid)
+function G = createGraph(mask, endPoints, branchPoints, cellNumberGrid, maxSpurLength)
 
 skeleton = mask;
 
@@ -66,7 +66,7 @@ fprintf('[createGraph] edgeStack1 contains %d edges\n', edgeStack.size);
 
 fprintf('[createGraph] Calling NeuriteGraph constructor\n');
 tic;
-G = NeuriteGraph(edgeStack.toCellArray(), vertexLocations, cellNumberGrid, size(mask), skeleton);
+G = NeuriteGraph(edgeStack.toCellArray(), vertexLocations, cellNumberGrid, size(mask), skeleton, maxSpurLength);
 toc;
 fprintf('[createGraph] Finished\n');
 end

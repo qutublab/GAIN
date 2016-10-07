@@ -1,5 +1,5 @@
 function rgb = addBorder(I, M, color)
-border = M & ~imerode(M, true(5));
+border = M & ~imerode(M, true(3));%9/13: 5-->3
 if size(I, 3) == 1
     r = I;
     g = I;

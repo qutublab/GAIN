@@ -11,7 +11,6 @@ classdef NeuronBodyData < handle
         hasDapi
         mask
         totalNucleiArea = 0
-        countedNucleiArea = 0
         minNeuriteLength
         longNeuriteCount
         longestNeuriteLength
@@ -42,7 +41,6 @@ classdef NeuronBodyData < handle
 
         function n = copy(nbd)
             n = NeuronBodyData(nbd.bodyNumber, nbd.nucleiNumber, nbd.bodyArea, nbd.numberOfNuclei, nbd.centroidRow, nbd.centroidColumn, nbd.radius, nbd.mask, nbd.totalNucleiArea);
-            n.countedNucleiArea = nbd.countedNucleiArea;
             n.minNeuriteLength = nbd.minNeuriteLength;
             n.longNeuriteCount = nbd.longNeuriteCount;
             n.longestNeuriteLength = nbd.longestNeuriteLength;
