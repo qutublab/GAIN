@@ -1,3 +1,5 @@
+% Remove code tagged with "byron"
+
 classdef NeuriteGraph < handle
     properties
         % distancetable - a Matlab map whose keys are strings of the
@@ -23,22 +25,14 @@ classdef NeuriteGraph < handle
         skeleton
         anEdge
         edgeCountByVertex
-        maxSpurLength
-        % Long edges are too long to  be spurs
-        longEdgeCountByVertex
-        % Short edge neighbor vertex tracked for spur removal.  Only the last
-        % one encountered is remembered because a vertex at the end of a spur
-        % has only one neighbor
-        shortEdgeNeighborVertex
     end
     
     methods
-        function ng = NeuriteGraph(edgeData, vertexlocations, tujBodyNumberGrid, imageSize, skeleton, maxSpurLength)
+        function ng = NeuriteGraph(edgeData, vertexlocations, tujBodyNumberGrid, imageSize, skeleton)
             fprintf('[NeuriteGraph]\n');
             if nargin == 0
                 return;
             end
-            ng.maxSpurLength = maxSpurLength;
             ng.anEdge = edgeData{1};
             ng.cellBodyNumberGrid = tujBodyNumberGrid;
             ng.distancetable = containers.Map();
@@ -46,8 +40,6 @@ classdef NeuriteGraph < handle
             fprintf('size(ng.vertexlocations, 1)=%d\n', size(ng.vertexlocations, 1));
             ng.numvertices = size(vertexlocations, 1);
             ng.edgeCountByVertex = zeros(ng.numvertices, 1);
-            ng.longEdgeCountByVertex = zeros(ng.numvertices, 1);
-            ng.shortEdgeNeighborVertex = zeros(ng.numvertices, 1);
             ng.imageSize = imageSize;
             ng.skeleton = skeleton;
             %            edgeCount = sparse(zeros(ng.numvertices));
@@ -86,15 +78,6 @@ classdef NeuriteGraph < handle
                 edgeCount(key) = ind - 1;
                 ng.edgeCountByVertex(v1) = ng.edgeCountByVertex(v1) + 1;
                 ng.edgeCountByVertex(v2) = ng.edgeCountByVertex(v2) + 1;
-                if e.distance > maxSpurLength
-                    ng.longEdgeCountByVertex(v1) = ng.longEdgeCountByVertex(v1) + 1;
-                    ng.longEdgeCountByVertex(v2) = ng.longEdgeCountByVertex(v2) + 1;
-		    else
-                        % Needed for spur removal. Remember a short edge
-                        % neighbor
-                        ng.shortEdgeNeighborVertex(v1) = v2;
-                        ng.shortEdgeNeighborVertex(v2) = v1;
-                end
             end
             fprintf('[NeuriteGraph] End map building\n');
             
@@ -266,116 +249,6 @@ tic;
 toc;
         end
         
-        function removeSpurs3(ng, maxSpurLength)
-fprintf('[NeuriteGraph.removeSpurs3] First loop...\n');
-tic;
-            % Do not remove any edges until all candidates have been examined
-            % because the removal of an edge can make another edge become a
-            % spur.
-            
-            % An edge between v1 and v2 is removed if all of the following
-            % hold:
-            % 1. v1 has only a single, short edge incident upon it.
-            % 2. v1 and v2 do not touch cell bodies
-            % 3. v2 has at least two other edges which are long
-
-            spurStack = Stack();
-
-            % Identify vertices that do not touch cell bodies
-            nonCellVertices = cellfun(@isempty, ng.vertexattujbody);
-
-            % Identify vertices with one, short edge and not touching a cell
-            % body
-            loneVertices = find(ng.edgeCountByVertex == 1 ...
-                & ng.longEdgeCountByVertex == 0 & nonCellVertices);
-
-            % Identify neighbors of lonveVertices
-            loneVertexNeighbors = ng.shortEdgeVertexNeighbor(loneVertices);
-
-            % An acceptable potential neighbor, v2, does not touch a cell body 
-            % and has at least two long edges.
-            acceptablePotentialNeighborVertices = nonCellVertices ...
-                & longEdgeCountByVertex >= 2;
-
-            acceptableActualNeighbors = acceptablePotentialNeighborVertices(loneVertexnNighbors);
-
-            spurVertices1 = loneVertices(acceptableActualNeighbors);
-            spurVertices2 = loneVertexNeighbors(acceptableActualNeighbors);
-
-            arrayfun(@(v1, v2)ng.clearEdge(v1, v2), spurVertices1, spurVertices2);
-
-
-            if any(arrayfun(@(x)numel(x.v), loneVertexEdgeBoxes)  ~= 1)
-	        error('[NeuriteGraph.removeSpurs3] Vertex does not have exactly one edge');
-            end
-	    shortEdgeLoneVertices = loneVertices(arrayfun(@(x)x.v(1).distance <= maxSpurLength, loneVertexEdgeBoxes));
-            loneVertexNeighbor = arrayfun(@(v,eb)vertexNeighbor(v,eb.v(1)), shortEdgeLoneVertices, loneEdgeVertexBoxes);
-            isSpur = ng.longEdgeCountByVertex(loneVertexNeighbor) >= 2;
-            spurVertex1 = shorteEdgeLoneVertices(isSpur);
-            spurVertex2 = loneVertexNeighbor(isSpur);
-            arrayfun(@(v1, v2)ng.clearEdges(v1, v2), spurVertex1, spurVertex2);
-
-%            for v = 1:ng.numvertices
-%            for v = loneVertices'         %'
-%                fprintf('[NeuriteGraph.removeSpurs3] Processing vertex %d of %d\n', v, ng.numvertices);
-%
-%                if ng.edgeCountByVertex(v) ~= 1 continue; end
-%                % Now assume that v has a single edge
-%                if ~isempty(ng.vertexattujbody{v}) continue; end
-%                % Now assume v is not at a cell body
-%
-%                edgesBox = ng.getFirstNonemptyEdgesBox(v);
-%                if numel(edgesBox.v) ~= 1
-%                    error('[NeuriteGraph.removeSpurs3] Attempting to clear edges box with %d edges', numel(edgesBox.v));
-%                end
-%                if edgesBox.v(1).distance > maxSpurLength continue; end
-%                edge = edgesBox.v(1);
-%                % Now assume the edge is short
-%                if edge.vertices(1) == v
-%                    v2 = edge.vertices(2);
-%                elseif edge.vertices(2) == v
-%                    v2 = edge.vertices(1);
-%                else
-%                    error('[NeuriteGraph.removeSpurs3] Expected edge to touch vertex %d', v);
-%                end
-%                if ~isempty(ng.vertexattujbody{v2}) continue; end
-%                % Now assume that the vertex connected to v is not touching a
-%                % cell body
-%                
-%                % Check if v2 has at least two long edges
-%                if ng.edgeCountByVertex(v2) < 2 continue; end
-%                longEdgeCount = 0;
-%                for v3 = 1:ng.numvertices
-%                    edgesBox = ng.getEdgesBox(v2, v3);
-%                    if ~isempty(edgesBox)
-%                        edgeArr = edgesBox.v;
-%                        for e = 1:numel(edgeArr)
-%                            if edgeArr(e).distance > maxSpurLength 
-%                                longEdgeCount = longEdgeCount + 1;
-%                                if longEdgeCount >= 2
-%                                    break;
-%                                end
-%                            end
-%                        end
-%                    end
-%                end
-%                if longEdgeCount < 2 continue; end
-%
-%                spurStack.push([v, v2]);
-%            end
-toc;
-fprintf('[NeuriteGraph.removeSpurs3] Second loop...\n');
-tic;
-            
-            while ~spurStack.empty()
-                vv2 = spurStack.pop();
-                v = vv2(1);
-                v2 = vv2(2);
-                ng.clearEdges(v, v2);
-            end
-toc;
-        end
-        
         % Returns the first edge found or []
 	function edgesBox = getFirstNonemptyEdgesBox(ng, v)
             for v2 = 1:ng.numvertices
@@ -386,47 +259,6 @@ toc;
             end
             error('[NeuriteGraph.getFirstNonemptyEdgesBox] Unable to find nonempty edges box for vertes %d', v);
         end
-
-        function removeSpurs4(ng)
-fprintf('[NeuriteGraph.removeSpurs4] Begin...\n');
-tic;
-            % An edge between v1 and v2 is removed if all of the following
-            % hold:
-            % 1. v1 has only a single, short edge incident upon it.
-            % 2. v1 and v2 do not touch cell bodies
-            % 3. v2 has at least two other edges which are long
-tic;
-            spurStack = Stack();
-
-            % Identify vertices that do not touch cell bodies
-            nonCellVertices = cellfun(@isempty, ng.vertexattujbody);
-
-            % Identify vertices with one, short edge and not touching a cell
-            % body
-            loneVertices = find(ng.edgeCountByVertex == 1 ...
-                & ng.longEdgeCountByVertex == 0 & nonCellVertices);
-
-            % Identify neighbors of lonveVertices
-            loneVertexNeighbors = ng.shortEdgeNeighborVertex(loneVertices);
-
-            % An acceptable potential neighbor, v2, does not touch a cell body 
-            % and has at least two long edges.
-            acceptablePotentialNeighborVertices = nonCellVertices ...
-                & ng.longEdgeCountByVertex >= 2;
-
-            acceptableActualNeighbors = acceptablePotentialNeighborVertices(loneVertexNeighbors);
-
-            spurVertices1 = loneVertices(acceptableActualNeighbors);
-            spurVertices2 = loneVertexNeighbors(acceptableActualNeighbors);
-toc;
-tic;
-            arrayfun(@(v1, v2)ng.clearEdges(v1, v2), spurVertices1, spurVertices2);
-toc;
-        end
-
-
-
-
 
 
         function testNormalAngle(ng)
@@ -588,56 +420,6 @@ toc;
             end
         end
         
-        % Traverses edge e from end point vertex v until either distance dist
-        % has been traveled or the end of the edge is reached.  Returns the row
-        % and column of the pixel reached, the remaining distance to be
-        % traveled, and the edge end point vertex towards which the traversal
-        % was done.
-        function [r c remainingDist towardsVertex] = followEdgeFromVertexOld(ng, edge, v, dist)
-            r = ng.vertexlocations(v, 1);
-            c = ng.vertexlocations(v, 2);
-            pathIdxList = edge.pathIdxList;
-            root2 = sqrt(2);
-            [first delta last] = ng.getPathDirection(pathIdxList, r, c);
-            [targetR targetC] = ind2sub(ng.imageSize, pathIdxList(last));
-            vrc1 = ng.vertexlocations(edge.vertices(1), :);
-            if vrc1(1) == targetR && vrc1(2) == targetC
-                towardsVertex = edge.vertices(1);
-            else
-                vrc2 = ng.vertexlocations(edge.vertices(2), :);
-                if vrc2(1) == targetR && vrc2(2) == targetC
-                    towardsVertex = edge.vertices(2);
-                else
-                    error('[NeuriteGraph.followEdgeFromVertex] Unable to determine target vertex at r=%d c=%d', targetR, targetC);
-                end
-            end
-            [R, C] = ind2sub(ng.imageSize, pathIdxList);
-            remainingDist = dist;
-            for i = (first+delta):delta:last
-                if remainingDist <= 0
-                    break;
-                end
-                nextR = R(i);
-                nextC = C(i);
-                rcDelta = abs(nextR - r) + abs(nextC - c);
-                if rcDelta == 2
-                    remainingDist = remainingDist - root2;
-                elseif rcDelta == 1
-                    remainingDist = remainingDist - 1;
-                else
-                    error('[NeuriteGraph.followEdgeFromVertex] Unexpected rcDelta: %f', rcDelta);
-                end
-                r = nextR;
-                c = nextC;
-            end
-%             path = Path(edge.distance, Stack(edge), v, towardsVertex);
-        end
-        
-        % Traverses edge e from end point vertex v until either distance dist
-        % has been traveled or the end of the edge is reached.  Returns the row
-        % and column of the pixel reached, the remaining distance to be
-        % traveled, and the edge end point vertex towards which the traversal
-        % was done.
         function [r c remainingDist towardsVertex] = followEdgeFromVertex(ng, edge, v, dist)
             r = ng.vertexlocations(v, 1);
             c = ng.vertexlocations(v, 2);
@@ -656,13 +438,6 @@ toc;
                     error('[NeuriteGraph.followEdgeFromVertex] Unable to determine target vertex at r=%d c=%d', targetR, targetC);
                 end
             end
-            if edge.distance <= dist
-                r = targetR;
-                c = targetC;
-                remainingDist = dist - edge.distance;
-return;
-            end
-
             [R, C] = ind2sub(ng.imageSize, pathIdxList);
             remainingDist = dist;
             for i = (first+delta):delta:last
@@ -711,38 +486,34 @@ return;
         % single vertex.  This method used to: Return the entire sequence
         % of edges necessary to go a distance of span from vertex v.
 % :03:
-        function [bestPaths bestCosine] = findBestStartsFromVertex(ng, v, currPath, r0, c0, span, unitTarget)
-fprintf('[NeuriteGraph.findBestStartsFromVertex] v=%d  span=%f\n', v, span); % byron
-et = 0;
+        function [bestPaths bestCosine] = findBestStartsFromVertex(ng, v, currPath, r0, c0, span, unitTarget)  
+%fprintf('[NeuriteGraph.findBestStartsFromVertex] v=%d\n', v)   % byron
             bestPaths = Stack();
             % Find unused edges from v
             unusedEdgeStack = ng.unusedEdges(v, currPath.edgeInPath);
+if v == 822 || v == 837
+  fprintf('[NeuriteGraph.findBestStartsFromVertex] Unused edges from vertex %d: %d\n', v, unusedEdgeStack.size())    % byron
+end
             bestUnusedEdges = Stack();
             bestCosine = -Inf;
             while ~unusedEdgeStack.empty()
-                edge = unusedEdgeStack.pop();
-                tic;
+                edge = unusedEdgeStack.pop()
                 [r c remainingSpan towardsVertex] = ng.followEdgeFromVertex(edge, v, span);
-                et = et+ toc;
                 newCurrPath = currPath.copy().addEdge(edge, towardsVertex);
                 if remainingSpan <= 0
                     u = ng.makeUnitVector([r - r0, c - c0]);
                     cosine = sum(u .* unitTarget);
                     pathStack = Stack(newCurrPath);
+fprintf('[NeuriteGraph.findBestStartsFromVertex] angle point: r=%d c=%d\n', r, c);
                 else
                     % Keep going only when a cell body is NOT reached
                     if isempty(ng.vertexattujbody{towardsVertex})
+		    fprintf('[NeuriteGraph.findBestStartsFromVertex] Continuing from vertex %d\n', towardsVertex)
 %                         [pathStack cosine] = ng.findBestStartsFromVertex(towardsVertex, newCurrPath, r0, c0, remainingSpan, unitTarget);
-                        [pstk, cosine] = ng.findBestStartsFromVertex(towardsVertex, newCurrPath, r0, c0, remainingSpan, unitTarget);
-                        % if there was no other unused edge, then pstk is
-                        % empty. In such cases measure cosine from endpoint of
-                        % current edge.
-                        if pstk.empty
-                            u = ng.makeUnitVector([r - r0, c - c0]);
-                            cosine = sum(u.* unitTarget);
-                        end
+                        [~, cosine] = ng.findBestStartsFromVertex(towardsVertex, newCurrPath, r0, c0, remainingSpan, unitTarget);
                         pathStack = Stack(newCurrPath);
                     else
+fprintf('[NeuriteGraph.findBestStartsFromVertex] Reached cell body\n')
                         u = ng.makeUnitVector([r - r0, c - c0]);
                         cosine = sum(u .* unitTarget);
                         pathStack = Stack(newCurrPath);
@@ -760,15 +531,14 @@ et = 0;
             end
 %             fprintf('[NeuriteGraph.findBestStartsFromVertex] Found %d starts from vertex %d\n', bestPaths.size(), v);
         end
-
-
-
-
         % -.797 -.605
 % :02:
         function bestPaths = findBestPaths(ng, v, currPath, span, unitTarget)
             r = ng.vertexlocations(v, 1);
             c = ng.vertexlocations(v, 2);
+if v == 822
+fprintf('\n\n[NeuriteGraph.findBestPaths] Begin vertex %d  r=%d c=%d unitTarget=(%d,%d)\n', v, r, c, unitTarget(1), unitTarget(2)); % byron
+end
             [bestStarts bestCosine] = ng.findBestStartsFromVertex(v, currPath, r, c, span, unitTarget);
             bestPaths = Stack();
             while ~bestStarts.empty()
@@ -804,16 +574,16 @@ et = 0;
             fprintf('[NeuriteGraph.allStraightWalksFromTujBody] Begin checking edges from cluster %d\n', nbi);
             tic;
 % 1247 1275 1283 1286 1295 1319 1323 1358 1376
-            for v = 1:ng.numvertices
+            for v = 1247     % 1:ng.numvertices byron
                 if ~isempty(find(ng.vertexattujbody{v} == nbi))
                     [unitTarget distToV] = ng.unitNormalVector(v, nbi);
                     pth = Path(distToV, Stack(), v, v);
                     pth.fromBody = ng.vertexattujbody{v};
                     fprintf('[NeuriteGraph.allStraightWalksFromTujBody] findBestPaths v=%d\n', v);
-%                    tic;
+                    tic;
                     bestPaths = ng.findBestPaths(v, pth, span, unitTarget);
-%                    et = toc;
-%                    fprintf('[NeuriteGraph.allStraightWalksFromTujBody] time: %f\n', et);
+                    et = toc;
+                    fprintf('[NeuriteGraph.allStraightWalksFromTujBody] time: %f\n', et);
 %                     fprintf('[NeuriteGraph.allStraightWalksFromTujBody] Found %d paths at vertex %d of cluster %d\n', bestPaths.size(), v, nbi);
                     % Keep longest path from each vertex
                     maxLength = -1;
@@ -861,6 +631,14 @@ et = 0;
                         e = edges(i);
                         if (~e.used) && (~used(e.idNum))
                             edgeStack.push(e);
+%if v == 926   % byron
+%  fprintf('[NeuriteGraph.unusedEdges] Unused edge between 926 and %d\n', v2)
+%end
+%else
+%if v == 926
+%  fprintf('[NeuriteGraph.unusedEdges] Used edge between 926 and %d  e.used=%d used(e.idNum=%d\n', v2, e.used, used(e.idNum))
+%end
+
                         end
                     end
                 end
@@ -878,7 +656,6 @@ et = 0;
         end
         
         
-        % Remove all edges between v1 and v2
         function clearEdges(ng, v1, v2)
             key = ng.createKey(v1, v2);
             if ng.distancetable.isKey(key)
@@ -886,19 +663,6 @@ et = 0;
                 numEdges = numel(edgesBox.v);
                 ng.edgeCountByVertex(v1) = ng.edgeCountByVertex(v1) - numEdges;
                 ng.edgeCountByVertex(v2) = ng.edgeCountByVertex(v2) - numEdges;
-                for i = 1:numEdges
-                    if edgesBox.v(i).distance > ng.maxSpurLength
-                        ng.longEdgeCountByVertex(v1) = ng.longEdgeCountByVertex(v1) - 1;
-                        ng.longEdgeCountByVertex(v2) = ng.longEdgeCountByVertex(v2) - 1;
-                    else
-                        if ng.shortEdgeNeighborVertex(v1) == v2;
-                            ng.shortEdgeNeighborVertex(v1) = 0;
-                        end
-                        if ng.shortEdgeNeighborVertex(v2) == v1;
-                            ng.shortEdgeNeighborVertex(v2) = 0;
-                        end
-                    end
-                end
                 ng.distancetable.remove(key);
             end
         end
@@ -993,18 +757,6 @@ et = 0;
             Path(0, Stack(), 0, 0, ng.anEdge.numObjects);
         end
 
-    function v2 = vertexNeighbor(v1, e)
-        v2 = [];
-        if e.vertices(1) == v1
-            v2 = e.vertices(2);
-        else
-            if e.vertices(2) == v1
-                v2 = e.vertices(1);
-            else
-                error('[NeuriteGraph.vertexNeighbor] Unable to find vertex %d in edge %d', v1, e.idNum);
-            end
-        end
-    end
 
     end
 end

@@ -84,7 +84,6 @@ numTimings = 0;
 totalTime = 0;
 minTime = Inf;
 maxTime = -Inf;
-waitbarHandle = waitbar(0, sprintf('Begin searching for paths from %d vertices', numVertices));
 for i = 1:numVertices
     pathStarts = vertexPathStarts(i);
 %    fprintf('[test2.test2] processing paths from vertex %d  pathStarts=%d\n', i, pathStarts);
@@ -134,13 +133,11 @@ for i = 1:numVertices
             end
         end
     end
-    if ishandle(waitbarHandle)
-        waitbar(i/numVertices, waitbarHandle, sprintf('Searched for paths from %d of %d vertices', i, numVertices));
+    if rem(i, 1000) == 0
+        fprintf('[findEdges] Processed %d of %d vertices\n', i, numVertices);
     end
 end
-if ishandle(waitbarHandle)
-    close(waitbarHandle);
-end
+
 % fprintf('numTimings=%f\n', numTimings);
 % fprintf('totalTime=%f\n', totalTime);
 % fprintf('meanTime=%f\n', (totalTime / numTimings));

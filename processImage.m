@@ -14,7 +14,8 @@ p = Parameters();
 % end
 
 p.initialize2();
-
+p.branchResolutionDistance = 17;
+p.tujThreshFactor3 = 1.7;
 p.fileName = fileName;
 
 
@@ -122,6 +123,10 @@ b(neBrdr) = 1;
 %figure, imshow(cat(3, r, g, b));
 %return;
 
+imwrite(nip.getThirdNeuriteMask(), [prefix, '-thirdneuritemask.tif'], 'tif', 'Compression', 'none');
+imwrite(nip.getThirdConnectedNeuriteMask(), [prefix, '-thirdconnectedneuritemask.tif'], 'tif', 'Compression', 'none');
+imwrite(nip.getThirdUnconnectedNeuriteMask(), [prefix, '-thirdunconnectedneuritemask.tif'], 'tif', 'Compression', 'none');
+
 
 I = nip.getCellImage();
 D = nip.getNucleusImage();
@@ -141,6 +146,10 @@ N3 = nip.getThirdNeuriteMask();
 imwrite(N3, [prefix,'-thirdneuritemask.tif'], 'tif', 'Compression', 'none');
 
 
+CN = nip.getClosedConnectedNeuriteMask();
+UN = nip.getClosedUnconnectedNeuriteMask();
+imwrite(CN, strcat(prefix,'-connectedneurites.tif'), 'tif', 'Compression', 'none');
+imwrite(UN, strcat(prefix,'-unconnectedneurites.tif'), 'tif', 'Compression', 'none');
 
 connectedSkel = nip.getConnectedNeuriteSkeleton();
 unconnectedSkel = nip.getUnconnectedNeuriteSkeleton();
@@ -154,6 +163,7 @@ dlmwrite(strcat(prefix,'-cellbodylabel.txt'), B);
 
 BBorder = makeBorder(B > 0);
 
+nbdArr = nip.getCellBodyData();
 longPathSkel = false(size(connectedSkel));
 shortPathSkel = false(size(connectedSkel));
 for i = 1:numel(nbdArr)
@@ -168,18 +178,19 @@ imwrite(shortPathSkel, strcat(prefix,'-shortPathSkel.tif'), 'tif', 'Compression'
 createFigure3(outputDir, prefix);
 createFigure9(outputDir, prefix);
 
+
 nbdArr = nip.getCellBodyData();
 resultsFileName = strcat(prefix, '-results.csv');
 [fid message] = fopen(resultsFileName, 'w');
 if ~isempty(message)
    error('Unable to open file: %s;  %s', resultsFileName, message); 
 end
-fprintf(fid, 'Cell Body Number,Cell Body Area,Nuclei Count,Total Nuclei Area,Counted Nuclei Area,Minimum Neurite Length,Number of Long Neurites,Neurite Lengths\n');
+fprintf(fid, 'Cell Body Number,Cell Body Area,Nuclei Count,Total Nuclei Area,Minimum Neurite Length,Number of Long Neurites,Neurite Lengths\n');
 for i = 1:numel(nbdArr)
    nbd = nbdArr(i);
-   fprintf(fid, '%d,%d,%d,%d,%d,%f,%d',...
+   fprintf(fid, '%d,%d,%d,%d,%f,%d',...
        nbd.bodyNumber, nbd.bodyArea, nbd.numberOfNuclei,...
-       nbd.totalNucleiArea, nbd.countedNucleiArea, nbd.minNeuriteLength,...
+       nbd.totalNucleiArea, nbd.minNeuriteLength,...
        nbd.longNeuriteCount);
    numLongPaths = numel(nbd.longPaths);
    numShortPaths = numel(nbd.shortPaths);
@@ -200,7 +211,6 @@ end
 fclose(fid);
 
 fprintf('Wrote file %s\n', resultsFileName);
-
 end
 
 function border = makeBorder(M)

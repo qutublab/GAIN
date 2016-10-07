@@ -25,10 +25,14 @@ function a = nextActionString(s)
         case NIPState.SeparatedBodiesFromNeurites
             a = 'Segment Neurites in Background';
         case NIPState.ResegmentedNeurites
+            a = 'Resegment Neurite Edges';
+        case NIPState.ResegmentedNeuriteEdges
             a = 'Close Neurite Mask';
         case NIPState.ClosedNeuriteMask
+            a = 'Skeletonize Neurites';
+        %temp - Quentin added the case below on 9/28 
+        case NIPState.SkeletonizedNeurites
             a = 'Create Graph';
-        
         case NIPState.CreatedGraph
             a = 'Find Neurite Paths';
         case NIPState.ComputedPaths

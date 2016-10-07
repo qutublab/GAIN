@@ -1,3 +1,8 @@
+
+% Updates cellBodyDataArr by setting the numberOfNuclei, totalNucleiArea, and
+% countedNucleiArea of each NeuronBodyData object in cellBodyDataArr.  
+
+
 function assignNucleusCount(cellBodyNumberGrid, nucleusNumberGrid, cellBodyDataArr, nucleusDataArr, nominalMeanNucleusArea, minNucleusArea)
 
 if isempty(nucleusDataArr)

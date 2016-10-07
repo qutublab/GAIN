@@ -1,8 +1,8 @@
 % Uses images created by processImage.m to create Figure 9
 
-function createFigure(dirName, prefix)
+function createFigure9(dirName, prefix)
 
-outputFile = [dirName, filesep, 'output.tif'];
+outputFile = [dirName, filesep, 'fig9b.tif'];
 
 tujFile = [prefix, '-tuj.tif'];
 dapiFile = [prefix, '-dapi.tif'];
