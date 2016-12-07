@@ -1,4 +1,3 @@
-
 % State                   Methods available in addition to methods available
 %                         at earlier states
 % --------------------------------------------------------------------------
@@ -65,7 +64,7 @@ classdef NeuronImageProcessor < handle
         endPoints
         connectedSkeleton
         unconnectedSkeleton
-
+        waitBarFlag
         graph
     end
     methods
@@ -124,14 +123,16 @@ classdef NeuronImageProcessor < handle
         function processImage(nip, parameters, steps)
             nip.parameters = parameters;
             nip.processParameterUpdates = false;
-            nip.state = NIPState.Ready;
+%            nip.state = NIPState.Ready;
             stepCount = 0;
             if nargin <= 2
                 steps = Inf;
             end
             while nip.state ~= NIPState.Done & stepCount < steps
+                tstart = tic;
                 status = nip.next();
-                fprintf('State=%s\n', char(nip.getState()));
+                et = toc(tstart);
+                fprintf('State=%s   %f seconds\n', char(nip.getState()), et);
                 if ~isempty(status)
                     error(status);
                 end
@@ -151,7 +152,9 @@ classdef NeuronImageProcessor < handle
         end
 
         function status = back(nip, oneParamArr)
-            status = nip.parameters.update(oneParamArr);
+            if nargin > 0
+                status = nip.parameters.update(oneParamArr);
+            end
             if ~strcmp(status, '') return; end
             if (nip.state ~= NIPState.Ready)
                 nip.state = NIPState(uint16(nip.state) - 1); 
@@ -194,12 +197,15 @@ classdef NeuronImageProcessor < handle
                     status = nip.closeNeuriteMask();
                 case NIPState.ClosedNeuriteMask
                     status = nip.skeletonizeNeurites();
-                case NIPState.SkeletonizedNeurites
-                    status = nip.createNeuriteGraph();
-                case NIPState.CreatedGraph
-                    status = nip.findLongPaths();
-                case NIPState.ComputedPaths
-                    status = '';
+                    if isempty(status)
+                        status = nip.createNeuriteGraph();
+                        if isempty(status)
+                            status = nip.findLongPaths();
+                        end
+                    end
+%                case NIPState.CreatedGraph
+%                case NIPState.ComputedPaths
+%                    status = '';
                 case NIPState.Done
                     status = '';
                 otherwise error('[NeuronImageProcessor.next] Unexpected state: %s', char(nip.state));
@@ -244,24 +250,11 @@ classdef NeuronImageProcessor < handle
                 case NIPState.ResegmentedNeuriteEdges
                     activate = 12;
                 case NIPState.ClosedNeuriteMask
-                    activate = [];
-                %temp - Quentin added the 3 cases below on 9/28 
-                case NIPState.SkeletonizedNeurites
-                    activate = [];
-                case NIPState.CreatedGraph
-                    activate = [];
-                case NIPState.ComputedPaths
-                     activate = [];
-                     
+                    activate = 13;
                 case NIPState.Done
                     activate = [];
                 otherwise error('[NeuronImageProcessor.getParameters] Unexpected state: %s', char(nip.state));
             end
-
-	    % Always activate the branchResolutionDistance parameter because
-            % currenty, the GUI does not allow the user to step through to
-            % its use.
-            activate = [activate, 13];
 
             for i = 1:numel(activate)
                 oneParamArr(activate(i)).active = true;
@@ -333,39 +326,42 @@ classdef NeuronImageProcessor < handle
             [L numLabels] = bwlabel(nip.openedNucleusMask);
             nip.nucleusAllLabeled = L;
 
-%             figure, imshow(nip.nucleusImage,'initialmagnification','fit');
-%             figure, imshow(nip.firstNucleusMask,'initialmagnification','fit');
-%             figure, imshow(nip.secondNucleusMask,'initialmagnification','fit');
-%             figure, imshow(nip.openedNucleusMask,'initialmagnification','fit');
+%            minSolidity = Inf;
+%            maxSolidity = -Inf;
             
-            minSolidity = Inf;
-            maxSolidity = -Inf;
-            
-            areaArr = zeros(numLabels, 1);
-            solidityArr = zeros(numLabels, 1);
+%            areaArr = zeros(numLabels, 1);
+%            solidityArr = zeros(numLabels, 1);
 
             % Clear out previous contents of nucleusDataArr
             nip.nucleusDataArr = NucleusData.empty;
             nonclusterCount = 0;
-            for l = numLabels:-1:1
-                M = L == l;
-                % Solidity is the ratio of the area of an object to the area
-                % of its convex hull
-                props = regionprops(M, 'Area','Solidity', 'Centroid');
-                solidity = props.Solidity;
-                cluster = solidity < nip.parameters.areaToConvexHullRatio;
-                if ~cluster
-                    nonclusterCount = nonclusterCount + 1;
-                end
-                centroid = props.Centroid;
-                nip.nucleusDataArr(l) = NucleusData(l, props.Area, props.Solidity, cluster, centroid);
-                
-                minSolidity = min(minSolidity, solidity);
-                maxSolidity = max(maxSolidity, solidity);
+
+% Older, slower version
+%            for l = numLabels:-1:1
+%                M = L == l;
+%                % Solidity is the ratio of the area of an object to the area
+%                % of its convex hull
+%                props = regionprops(M, 'Area','Solidity', 'Centroid');
+%                solidity = props.Solidity;
+%                cluster = solidity < nip.parameters.areaToConvexHullRatio;
+%                if ~cluster
+%                    nonclusterCount = nonclusterCount + 1;
+%                end
+%                centroid = props.Centroid;
+%                nip.nucleusDataArr(l) = NucleusData(l, props.Area, props.Solidity, cluster, centroid);
+%                
+%%                minSolidity = min(minSolidity, solidity);
+%%                maxSolidity = max(maxSolidity, solidity);
+%            end
+
+            % Newer, faster version
+            props = regionprops(L, 'Area', 'Solidity', 'Centroid');
+            cluster = [props.Solidity] < nip.parameters.areaToConvexHullRatio;
+            nonclusterCount = numLabels - sum(cluster);
+            for i = numLabels:-1:1
+                nip.nucleusDataArr(i) = NucleusData(i, props(i).Area, props(i).Solidity, cluster(i), props(i).Centroid);
             end
-            
-%             fprintf('[NeuronImageProcessor.identifyNucleusClusters] minSolidity=%f  maxSolidity=%f (%d objects)\n', minSolidity, maxSolidity, numLabels);
-            
+
             if (~nip.optimization) && (nonclusterCount == 0)
                 status = sprintf('No non-clustered nuclei were found at an areaToConvexHullRatio of %f',...
                    nip.parameters.areaToConvexHullRatio); 
@@ -446,7 +442,9 @@ classdef NeuronImageProcessor < handle
             se = strel('disk', nip.parameters.neuriteRemovalDiskRadius, 0);
             nip.openedCellBodyMask = imfill(imopen(nip.firstCellMask, se), 'holes');
             nip.firstNeuriteMask = nip.firstCellMask & ~nip.openedCellBodyMask;
-            nip.firstNeuriteMask = bwareaopen(nip.firstNeuriteMask, 2);
+            % imopen can remove single pixels from cell bodies, so eliminate
+            % all single pixel neurite sections
+            nip.firstNeuriteMask = bwareaopen(nip.firstNeuriteMask, 2); 
             nip.firstConnectedNeuriteMask = imreconstruct(nip.openedCellBodyMask, nip.firstCellMask) & nip.firstNeuriteMask;
             nip.firstUnconnectedNeuriteMask = nip.firstNeuriteMask & ~ nip.firstConnectedNeuriteMask;
             [nip.cellBodyNumberGrid nip.numCellBodies] = bwlabel(nip.openedCellBodyMask);
@@ -458,7 +456,6 @@ classdef NeuronImageProcessor < handle
 
         function status = resegmentNeurites(nip)
             status = '';
-
             % Use thresholding on the background to find more signal
             thresh2 = graythresh(nip.cellImage(~nip.firstCellMask));
             thresh2 = min(1, thresh2 * nip.parameters.tujThreshFactor2);
@@ -471,7 +468,10 @@ classdef NeuronImageProcessor < handle
             nip.extendedCellBodyMask = imopen(nip.secondCellMask, se);
             % Isolate neurites
             nip.secondNeuriteMask = (nip.secondCellMask & ~nip.extendedCellBodyMask) | nip.firstNeuriteMask;
-            nip.secondNeuriteMask = bwareaopen(nip.secondNeuriteMask,2);
+            % imopen can remove single pixels from a body that should not be
+            % recognized as neurites
+            nip.secondNeuriteMask = bwareaopen(nip.secondNeuriteMask, 2);
+            
 
             % Use edge detection as an additional way to find neurites
             nip.gradientMag = imgradient(nip.cellImage);
@@ -502,31 +502,18 @@ classdef NeuronImageProcessor < handle
            
 
 
-            
+%            nip.neuriteExtensions = extendNeurites(nip, nip.secondNeuriteMask,%...
+%                nip.openedCellBodyMask, nip.extendedCellBodyMask,...
+%                round(nip.parameters.neuriteRemovalDiskRadius/2));
+
+%            nip.originalNeurites = nip.secondNeuriteMask;
 
 
-            nip.neuriteExtensions = extendNeurites(nip, nip.secondNeuriteMask,...
-                nip.openedCellBodyMask, nip.extendedCellBodyMask,...
-                round(nip.parameters.neuriteRemovalDiskRadius/2));
-
-% r = nip.cellImage;
-% brdr = nip.extendedCellBodyMask & ~imerode(nip.extendedCellBodyMask, true(3));
-% r(nip.openedCellBodyMask | brdr | nip.secondNeuriteMask | nip.neuriteExtensions) = 0;
-% g = r; b = r;
-% r(nip.openedCellBodyMask | brdr) = 1;
-% g(nip.secondNeuriteMask) = 1;
-% b(nip.neuriteExtensions) = 1;
-% figure, imshow(cat(3, r, g, b));
-            
-            nip.originalNeurites = nip.secondNeuriteMask;
-
-
-            nip.secondNeuriteMask = nip.secondNeuriteMask | nip.neuriteExtensions;
+%            nip.secondNeuriteMask = nip.secondNeuriteMask | nip.neuriteExtensions;
             
 %             nip.secondConnectedNeuriteMask = imreconstruct(nip.openedCellBodyMask, nip.secondCellMask) & nip.secondNeuriteMask;
             nip.secondConnectedNeuriteMask = imreconstruct(imdilate(nip.openedCellBodyMask, true(3)), nip.secondNeuriteMask);
             nip.secondUnconnectedNeuriteMask = nip.secondNeuriteMask & ~nip.secondConnectedNeuriteMask;
-            
             
     
         end
@@ -570,6 +557,16 @@ classdef NeuronImageProcessor < handle
 %             nip.thirdNeuriteMask = sobelNeurites2 | nip.secondNeuriteMask;
             nip.thirdNeuriteMask = edgeNeurites2 | nip.secondNeuriteMask;
             
+
+            nip.neuriteExtensions = extendNeuritesNew(nip, nip.thirdNeuriteMask,...
+                nip.openedCellBodyMask, nip.extendedCellBodyMask,...
+                round(nip.parameters.neuriteRemovalDiskRadius/2));
+
+            nip.originalNeurites = nip.thirdNeuriteMask;
+
+            nip.thirdNeuriteMask = nip.thirdNeuriteMask | nip.neuriteExtensions;
+
+
             nip.thirdConnectedNeuriteMask = imreconstruct(imdilate(nip.openedCellBodyMask, true(3)), nip.thirdNeuriteMask);
             nip.thirdUnconnectedNeuriteMask = nip.thirdNeuriteMask & ~nip.thirdConnectedNeuriteMask;
             
@@ -587,6 +584,8 @@ classdef NeuronImageProcessor < handle
 %             g(nip.secondNeuriteMask & ~nip.firstNeuriteMask) = 1;
 %             b(n & ~(nip.secondNeuriteMask | nip.firstNeuriteMask)) = 1;
 %             figure, imshow(cat(3, r, g, b));
+
+
 
         end
         
@@ -649,7 +648,7 @@ classdef NeuronImageProcessor < handle
         
         function status = findLongPaths(nip)
             status = '';
-            computeLongPaths(nip.cellBodyDataArr, nip.graph, nip.parameters.branchResolutionDistance);
+            computeLongPaths(nip.cellBodyDataArr, nip.graph, nip.parameters.branchResolutionDistance, nip.waitBarFlag);
         end
 
 
@@ -825,7 +824,69 @@ classdef NeuronImageProcessor < handle
         function a = getActionName(nip)
            a = nextActionString(nip.state); 
         end
-        
+
+	function showWaitBar(nip, flag)
+            nip.waitBarFlag = flag;
+        end
+
+	function rgb = getResultsImage(nip)
+            cellBodyBorder = nip.openedCellBodyMask & ~imerode(nip.openedCellBodyMask, true(3));
+            connectedSkeleton = imdilate(nip.getConnectedNeuriteSkeleton, true(3));
+            unconnectedSkeleton = imdilate(nip.getUnconnectedNeuriteSkeleton, true(3));
+            nbdArr = nip.getCellBodyData;
+            longPathSkeleton = false(size(cellBodyBorder));
+            for n = 1:numel(nbdArr)
+                nbd = nbdArr(n);
+                numLongPaths = numel(nbd.longPaths);
+                for p = 1:numLongPaths
+                    stack = nbd.longPaths{p}.edgeStack;
+                    while ~stack.empty()
+                        e = stack.pop();
+                        longPathSkeleton(e.pathIdxList) = true;
+                    end
+                end
+            end
+            longPathSkeleton = imdilate(longPathSkeleton, true(3)) & ~nip.getOpenedCellBodyMask;
+
+            red = nip.cellImage;
+            green = nip.cellImage;
+            blue = nip.cellImage;
+
+            red(cellBodyBorder) = 1;
+            green(cellBodyBorder) = 0;
+            blue(cellBodyBorder) = 0;
+
+            red(connectedSkeleton) = 0;
+            green(connectedSkeleton) = 0;
+            blue(connectedSkeleton) = 1;
+
+            % Set long paths to green after connected skeleton is set to blue
+            % because long paths are a subset of connected skeleton
+            red(longPathSkeleton) = 0;
+            green(longPathSkeleton) = 1;
+            blue(longPathSkeleton) = 0;
+
+            red(unconnectedSkeleton) = 1;
+            green(unconnectedSkeleton) = 1;
+            blue(unconnectedSkeleton) = 0;
+
+            rgb = cat(3, red, green, blue);
+
+            for n = 1:numel(nbdArr)
+                nbd = nbdArr(n);
+                label = letterLabel(n);
+                row = nbd.centroidRow;
+                col = nbd.centroidColumn;
+                heightInPixels = 30;
+                color = [1 0.5 1];
+                rgb = overLayText(rgb, label, [row col], heightInPixels, color);
+            end
+        end
+
+
+
+
+
     end
     
 end

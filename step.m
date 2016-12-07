@@ -1,6 +1,6 @@
-function nip = processImage()
-fileNameCA = strcat('D:\Rice\Research\Qutub Lab\NeuronGUI\GitHub\GAIN-master\NeuronImageProcessor8\Images\', ...
-    {'image_8.tif', 'paramopt-tuj12.tif', 'paramopt-tuj13.tif', ...
+function nip = step()
+fileNameCA = strcat('/home/bl6/NeuronImages/GUI/NeuronGUI4b/ImagesNoScaleBars/', ...
+    {'paramopt-tuj11.tif', 'paramopt-tuj12.tif', 'paramopt-tuj13.tif', ...
     'paramopt-tuj14190.tif', 'paramopt-tuj14192.tif', ...
     'paramopt-tuj14194.tif', 'paramopt-tuj14198.tif'});
 fileName = fileNameCA{1};
@@ -15,10 +15,10 @@ p = Parameters();
 
 p.initialize2();
 p.fileName = fileName;
-%p.tujThreshFactor1 = 0.75;
-%p.tujThreshFactor2 = 1.2;
-%p.tujThreshFactor3 = 1.8;
-%p.branchResolutionDistance = 17;
+p.tujThreshFactor1 = 0.75;
+p.tujThreshFactor2 = 1.2;
+p.tujThreshFactor3 = 1.8;
+p.branchResolutionDistance = 17;
 
 
 
@@ -42,8 +42,6 @@ if ~success
 end
 
 nip = NeuronImageProcessor();
-nip.showWaitBar(true)
-%nip.showWaitBar(true);
 
 % Extract file name 
 % Ignore directory names
@@ -61,6 +59,42 @@ end
     
 % Add directory to prefix
 prefix = [outputDir, filesep, prefix0];
+
+
+stepNum = 7;
+nip.processImage(p, stepNum)
+parameterNames = properties(Nume
+while stepNum ~= 9 
+    paramName = parameterNames(stepNum);
+    paramVal = p.(paramName);
+    inStr = strtrim(input(sprintf('%s [%f]: ', paramVal), 's'));
+    if isempty(inStr)
+        nip.processImage(p, 1);
+        stepNum = stepNum + 1;
+    else
+        if strcomp(inStr, 'b')
+            nip.back();
+	    stepNum = max(stepNum - 1, 0);
+        else
+            newParamVal = str2num(inStr);
+            if numel(newParamValue) ~= 1 | isnan(newParamValue)
+                fprintf('Invalid input: %s\n', inStr);
+            else
+                typ = p.parameterType(paramName);
+                status = typ.check(newParamValue)
+                if ~isempty(status)
+                    fprintf('%s\n', status);
+                else
+                    p.(paramName) = newParamVal;
+                    nip.processImage(p, 1);
+                    stepNum = stepNum + 1;
+                end
+            end
+        end
+    end
+
+end
+return;
 
 nip.processImage(p);
 %nip.processImage(p, 13);

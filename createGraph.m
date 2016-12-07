@@ -2,7 +2,8 @@
 % This is an amended version of newcreategraph7. Changed so that after ring
 % removal, neurites are extended to tuj bodies.
 
-function G = createGraph(mask, endPoints, branchPoints, cellNumberGrid, maxSpurLength)
+%function G = createGraph(mask, endPoints, branchPoints, cellNumberGrid, maxSpurLength)
+function G = createGraph(mask, branchPoints, endPoints, cellNumberGrid, maxSpurLength)
 
 skeleton = mask;
 
@@ -28,7 +29,9 @@ bp = branchPoints & mask;
 lim = 14;
 contact = imfilter(double(bp), [1 1 1; 1 10 1; 1 1 1]) >= lim;
 [R, C] = find(contact);
-fprintf('%d branch points with %d or more branch point neighbors\n', numel(R), lim-10);
+if numel(R) > 0
+    fprintf('%d branch points with %d or more branch point neighbors\n', numel(R), lim-10);
+end
 
 if size(R, 1) > 0
     
@@ -60,15 +63,24 @@ sz = size(mask);
 %result = input('***');
 %error('***');
 
-fprintf('[createGraph] Starting findEdges\n');
-[edgeStack vertexLocations] = findEdges(skeleton, branchPoints, endPoints);
-fprintf('[createGraph] edgeStack1 contains %d edges\n', edgeStack.size);
+%fprintf('[createGraph] Starting findEdges\n');
+tstartFindEdges = tic;
+%[edgeStack vertexLocations] = findEdges2(skeleton, branchPoints, endPoints);
+[edges vertexLocations maxEdgesPerVertexPair]= findEdges2(skeleton, branchPoints, endPoints);
+%fprintf('[createGraph] findEdges2 elapsed time: %f\n', toc(tstartFindEdges));
 
-fprintf('[createGraph] Calling NeuriteGraph constructor\n');
-tic;
-G = NeuriteGraph(edgeStack.toCellArray(), vertexLocations, cellNumberGrid, size(mask), skeleton, maxSpurLength);
-toc;
-fprintf('[createGraph] Finished\n');
+
+%fprintf('[createGraph] edgeStack1 contains %d edges\n', edgeStack.size);
+%fprintf('[createGraph] edgeStack1 contains %d edges\n', numel(edges));
+
+%fprintf('[createGraph] Calling NeuriteGraph constructor\n');
+%tic;
+%G = NeuriteGraph(edgeStack.toCellArray(), vertexLocations, cellNumberGrid, size(mask), skeleton, maxSpurLength);
+%G = NeuriteGraph(edges, vertexLocations, cellNumberGrid, size(mask), skeleton, maxSpurLength);
+G = NewNeuriteGraph(edges, vertexLocations, cellNumberGrid, size(mask), skeleton, maxSpurLength, maxEdgesPerVertexPair);
+%toc;
+%fprintf('[createGraph] Finished\n');
+
 end
 
 

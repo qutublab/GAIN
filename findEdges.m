@@ -45,7 +45,7 @@
 function [edgeStack vertexLocations] = findEdges(skeleton, branchPoints, endPoints)
 
 fprintf('[findEdges] Prep...\n');
-tic;
+tstart = tic;
 skeleton = uint8(skeleton);
 % Identify vertices
 vertex = uint8(branchPoints | endPoints);
@@ -70,11 +70,15 @@ vertexPathStarts = vertexPixelFinder(vertexIdx);
 % neighbors have precedence over corner neighbors, remove corner neighbors
 % adjacent to side neighbors.  Thus each neighbor is the start of a unique path
 % from the vertex.
+
 vertexPathStarts = removeAdjacentCornerNeighbors(vertexPathStarts);
 
 % Clear the indicators for the vertices, this allows a fast way to determine
 % when a vertex has been reached
 nextPixelFinder(branchPoints | endPoints) = 0;
+
+fprintf('[findEdges] elapsed time: %f\n', toc(tstart));
+
 
 % Find all paths starting from each vertex
 edgeStack = Stack();
@@ -84,6 +88,11 @@ numTimings = 0;
 totalTime = 0;
 minTime = Inf;
 maxTime = -Inf;
+maxTimeIndex = [];
+followET = 0;
+restET = 0;
+loopET = 0;
+tstartLoop = tic;
 for i = 1:numVertices
     pathStarts = vertexPathStarts(i);
 %    fprintf('[test2.test2] processing paths from vertex %d  pathStarts=%d\n', i, pathStarts);
@@ -101,10 +110,11 @@ for i = 1:numVertices
                 % 2, then the second bit encodes 2.  If bitPos is 3, then 
                 % the third bit encodes 4.
                 [dr dc] = offset(bitPos);
-                tic;
+                tstartFollow = tic;
                 [edge targetVrtx vrtxPrev]= follow(nextPixelFinder, vr, vc, vr+dr, vc+dc, nextPixelFilter, vertexNumber);
-                time = toc;
-                
+                time = toc(tstartFollow);
+                followET = followET + time;
+                                
 %                 if i == 98 | targetVrtx == 98
 %                     fprintf('[findEdges] Found path from vertex %d to vertex %d\n', i, targetVrtx);
 %                     fprintf('[findEdges] vertex %d: r=%d c=%d  vertex%d: r=%d c=%d \n', i, vertexR(i), vertexC(i),...
@@ -118,7 +128,11 @@ for i = 1:numVertices
                 numTimings = numTimings + 1;
                 totalTime = totalTime+ time;
                 minTime = min(minTime, time);
-                maxTime = max(maxTime, time);
+                if time > maxTime
+                    maxTime = time;
+                    maxTimeIndex = i;
+                end
+%                maxTime = max(maxTime, time);
                 % To prevent double processing of edges, update the destination
                 % vertex of the edge removing the indicator corresponding to
                 % the edge.
@@ -137,12 +151,18 @@ for i = 1:numVertices
         fprintf('[findEdges] Processed %d of %d vertices\n', i, numVertices);
     end
 end
+loopET = toc(tstartLoop);
 
-% fprintf('numTimings=%f\n', numTimings);
-% fprintf('totalTime=%f\n', totalTime);
-% fprintf('meanTime=%f\n', (totalTime / numTimings));
-% fprintf('minTime=%f\n', minTime);
-% fprintf('maxTime=%f\n', maxTime);
+fprintf('[findEdges] follow elapsed time: %f\n', followET)
+fprintf('[findEdges] loop elapsed time: %f\n', loopET)
+
+%fprintf('numTimings=%f\n', numTimings);
+%fprintf('totalTime=%f\n', totalTime);
+%fprintf('meanTime=%f\n', (totalTime / numTimings));
+%fprintf('minTime=%f\n', minTime);
+fprintf('maxTime=%f  maxTimeIndex=%d\n', maxTime, maxTimeIndex);
+
+
 
 %M = zeros(size(skeleton));
 %while ~edgeStack.empty()

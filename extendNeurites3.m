@@ -1,16 +1,9 @@
 
-% connect neurites inside halo to cell body
-% 
-% find point closest to average fringe point
-% find neurites touching cell body that do not reach extended cell body border
-% 
-% extendedCellBodyFringe = imdilate(extendedCellBodyMask, true(3)) & ~extendedCellBodyMask
-% neuritesTouchingCellBody imreconstruct(imdilate(cellBodyMask, true(3)). neuriteMask)
-% neuritesAtFringe = imreconstruct(extendedCellBodyFringe, neuriteMask)
-% neuritesInsideHalo
 
+% Rethreshold area defined by extended cell bodies without the cell bodies
+% themselves
 
-function extensions = extendNeurites(nip, neuriteMask, cellBodyMask, extendedCellBodyMask, dilationSide)
+function extensions = extendNeurites3(nip, neuriteMask, cellBodyMask, extendedCellBodyMask, dilationSide)
 tstart0 = tic;
 % brdr = (cellBodyMask & ~imerode(cellBodyMask, true(3))) | (extendedCellBodyMask & ~imerode(extendedCellBodyMask, true(3)));
 % r = nip.getCellImage();

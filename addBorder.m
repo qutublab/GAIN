@@ -1,3 +1,5 @@
+%version: 10.26.16
+
 function rgb = addBorder(I, M, color)
 border = M & ~imerode(M, true(3));%9/13: 5-->3
 if size(I, 3) == 1

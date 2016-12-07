@@ -29,14 +29,15 @@ function a = nextActionString(s)
         case NIPState.ResegmentedNeuriteEdges
             a = 'Close Neurite Mask';
         case NIPState.ClosedNeuriteMask
-            a = 'Skeletonize Neurites';
-        %temp - Quentin added the case below on 9/28 
-        case NIPState.SkeletonizedNeurites
-            a = 'Create Graph';
-        case NIPState.CreatedGraph
-            a = 'Find Neurite Paths';
-        case NIPState.ComputedPaths
-            a = 'Save Parameters';
+            a = 'Skeletonize Neurites and Determine Paths';            
+
+%        case NIPState.SkeltonizedNeurites
+%            a = 'Create Graph';
+%
+%        case NIPState.CreatedGraph
+%            a = 'Find Neurite Paths';
+%        case NIPState.ComputedPaths
+%            a = 'Save Parameters';
         case NIPState.Done
             a = 'Quit';
         otherwise

@@ -1,12 +1,21 @@
 
 
-function computeLongPaths(neuronBodyDataArr, G, junctionSpan)
+function computeLongPaths(neuronBodyDataArr, G, junctionSpan, showWaitBar)
 
 totalNeuriteLength = 0;
-for d =  1:numel(neuronBodyDataArr)  
+numClusters = numel(neuronBodyDataArr);
+if showWaitBar
+    h = waitbar(0, sprintf('Processing cell cluster %d of %d', 0, numClusters));
+end
+%for d = 7    %1:numel(neuronBodyDataArr)  byron
+for d = 1:numel(neuronBodyDataArr)
+    if showWaitBar & ishandle(h)
+        waitbar(d / numClusters, h, sprintf('Processing cell cluster %d of %d', d, numClusters));
+    end
+
     longPaths = Stack();
     shortPaths = Stack();
-    fprintf('Looking for paths from cluster %d of %d\n', d, numel(neuronBodyDataArr));
+%    fprintf('Looking for paths from cluster %d of %d\n', d, numel(neuronBodyDataArr));
     nbd = neuronBodyDataArr(d);
 %     if nbd.nucleiNumber > 0
 %         numCells = nbd.numberOfNeurons;
@@ -14,7 +23,7 @@ for d =  1:numel(neuronBodyDataArr)
         avgArea = nbd.bodyArea / numCells;
         avgDiameter = sqrt((4 * avgArea) / pi);
         minNeuriteLength = 3 * avgDiameter;
-        fprintf('[computeLongPaths] Computing walks for neuron body: %d\n', d);
+%        fprintf('[computeLongPaths] Computing walks for neuron body: %d\n', d);
 %         tic;
         pathStack = G.allStraightWalksFromTujBody(d, junctionSpan);
 %         et = toc;
@@ -56,9 +65,12 @@ for d =  1:numel(neuronBodyDataArr)
         nbd.shortPaths = shortPaths.toCellArray();
 %     end
 end
+if showWaitBar & ishandle(h)
+    close(h);
+end
 
 
-fprintf('Total Neurite Length: %f pixel widths\n', totalNeuriteLength);
+%fprintf('Total Neurite Length: %f pixel widths\n', totalNeuriteLength);
 
 
 % Check for missing paths due to marking edges as used

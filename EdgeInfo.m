@@ -5,6 +5,7 @@ classdef EdgeInfo < handle
         pathIdxList
         vertices
         used
+        useCount = 0;
     end
     
     methods

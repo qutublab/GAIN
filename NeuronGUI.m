@@ -1,4 +1,4 @@
-%Version - 9.28.2016
+%Version - 11.1.2016
 classdef NeuronGUI < handle
     properties
         nip
@@ -41,6 +41,8 @@ classdef NeuronGUI < handle
         legend
         legend2
         badDataWarning = false; % flag indicating if the user has been notified about invalid parameter in editbox
+        tableWindow
+    
     end
     
     
@@ -87,7 +89,7 @@ classdef NeuronGUI < handle
             
             ngui.nip=NeuronImageProcessor; %create and store the image processor obj
             if nargin>0
-                status = ngui.nip.readParametersFile(varargin{1})
+                status = ngui.nip.readParametersFile(varargin{1});
                 if ~isempty(status)
                     error(status)
                 end
@@ -100,11 +102,17 @@ classdef NeuronGUI < handle
             ngui.hSlider = sliderHandles;
             ngui.nextActionTextbox=nextActionTextbox;
             ngui.handle=[];
+            
             ngui.controlHandles = buttonHandles; %handles of buttons on control panel
             ngui.hControlpanel = controlpanelHandle; %handle of control panel window
             %hide the Figure Toolbar of the control panel window, name it,
             %and hide the number of the figure
-%             set(ngui.hControlpanel, 'menubar', 'none', 'name', 'Control Panel','numbertitle','off');
+            set(ngui.hControlpanel, 'menubar', 'none', 'name', 'Control Panel','numbertitle','off');
+            
+             %temp 10/28/16
+             %show wait bar for the final image in interactive mode
+             ngui.nip.showWaitBar(true)
+             %/temp
         end
         function forwardButtonCallback(ngui,UIhandle,x)
             state=ngui.nip.getState();
@@ -148,18 +156,24 @@ classdef NeuronGUI < handle
         
         function updateUser(ngui,status)
             state=ngui.nip.getState();
-            fprintf('%s\n',char(state))
+%             fprintf('%s\n',char(state))
             if ~isempty(status)
                 errordlg(status,'Error')
                 return
             end
-            fprintf('%s \n', char(state))
+%             fprintf('%s \n', char(state))
             switch(state)
                 case NIPState.ReadImages
-                    I = ngui.nip.getCellImage();
-                    J = ngui.nip.getNucleusImage();
+                    %                     I = ngui.nip.getCellImage();
+                    %                     J = ngui.nip.getNucleusImage();
+                    %                     h = figure(ngui.getHandle());
+                    %                     imshow(J)
+                    
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
                     h = figure(ngui.getHandle());
-                    imshow(J)
+                    imshow(rgb)
+                    %/temp 10/27/16
                     %                     set(ngui.instructionTextbox, 'string', 'Original nucleus image')%instruction textbox on control panel
                     set(ngui.legend,'string',sprintf('%s\n%s\n%s','Original', 'Nucleus', 'Image'),'ForegroundColor', 'k')
                     
@@ -170,235 +184,291 @@ classdef NeuronGUI < handle
                     %                     end
                     %                     linkdata on
                     
-                case NIPState.SegmentedNucleusImageOnce;
-                    I=ngui.nip.getFirstNucleusMask();
-                    J=ngui.nip.getNucleusImage();
-                    %Need to show stuff from before too
-%                     rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);%ocbm = opened cell body mask; empty here
-%                     rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
-%                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addBorder(J, I, [0, 0, 1]);
+                case NIPState.SegmentedNucleusImageOnce
+%                     I=ngui.nip.getFirstNucleusMask();
+%                     J=ngui.nip.getNucleusImage();
+%                      rgb = addBorder(J, I, [0, 0, 1]);
+%                     figure(ngui.getHandle());
+%                     imshow(rgb)
+                    
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
                     figure(ngui.getHandle());
                     imshow(rgb)
+                    %/temp 10/27/16
+                    
                     figure(ngui.getHandle());%without this command, the subPanel will not be shown (?)
                     %                    set(ngui.instructionTextbox, 'string', sprintf('blue - nuclei')) %instruction textbox on control panel
                     set(ngui.legend, 'String', sprintf('%s\n%s', 'Blue:', 'nuclei'), 'ForegroundColor', 'b')
                 case NIPState.SegmentedNucleusImageTwice
-                    I=ngui.nip.getSecondNucleusMask();
-                    J=ngui.nip.getNucleusImage();
-%                     rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);
-%                     rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
-%                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addBorder(J, I, [0, 0, 1]);
-                    figure(ngui.getHandle);
+%                     I=ngui.nip.getSecondNucleusMask();
+%                     J=ngui.nip.getNucleusImage();
+%                     figure(ngui.getHandle);
+%                     imshow(rgb)
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
+                    figure(ngui.getHandle());
                     imshow(rgb)
+                    %/temp 10/27/16
+
                     set(ngui.legend, 'String', sprintf('%s\n%s', 'Blue:', 'nuclei'), 'ForegroundColor', 'b')
-                case NIPState.OpenedNucleusMask;
-                    I=ngui.nip.getOpenedNucleusMask;
-                    J=ngui.nip.getNucleusImage();
-%                     rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);
-%                     rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
-%                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addBorder(J, I, [0, 0, 1]);
-                    figure(ngui.getHandle);
+                case NIPState.OpenedNucleusMask
+%                     I=ngui.nip.getOpenedNucleusMask;
+%                     J=ngui.nip.getNucleusImage();
+%                     rgb = addBorder(J, I, [0, 0, 1]);
+%                     figure(ngui.getHandle);
+%                     imshow(rgb)
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
+                    figure(ngui.getHandle());
                     imshow(rgb)
+                    %/temp 10/27/16
+                    
                     set(ngui.legend, 'String', sprintf('%s\n%s', 'Blue:', 'nuclei'), 'ForegroundColor', 'b')
                 case NIPState.IdentifiedNucleusClusters
-                    ngui.ndA = ngui.nip.getNucleusData(); %The property names are shown on the control panel. Need to solve this problem
-                    ngui.L = ngui.nip.getNucleusAllLabeled(); %labeled nucleus image matrix
-                    ngui.Cluster=false(size(ngui.L));
-                    ngui.Single = false(size(ngui.L));
-                    for i = 1:numel(ngui.ndA)
-                        if ngui.ndA(i).cluster
-                            ngui.Cluster = ngui.L==i | ngui.Cluster;
-                        else
-                            ngui.Single = ngui.L==i | ngui.Single;
-                        end
-                    end
-                    J=ngui.nip.getNucleusImage();
-%                     rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);
-%                     rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
-%                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addBorder(J, ngui.Cluster, [0, 1, 1]);
-                    rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
+%                     ngui.ndA = ngui.nip.getNucleusData(); %The property names are shown on the control panel. Need to solve this problem
+%                     ngui.L = ngui.nip.getNucleusAllLabeled(); %labeled nucleus image matrix
+%                     ngui.Cluster=false(size(ngui.L));
+%                     ngui.Single = false(size(ngui.L));
+%                     for i = 1:numel(ngui.ndA)
+%                         if ngui.ndA(i).cluster
+%                             ngui.Cluster = ngui.L==i | ngui.Cluster;
+%                         else
+%                             ngui.Single = ngui.L==i | ngui.Single;
+%                         end
+%                     end
+%                     J=ngui.nip.getNucleusImage();
+%                     rgb = addBorder(J, ngui.Cluster, [0, 1, 1]);
+%                     rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
+                    %/temp
                     figure(ngui.getHandle);
                     imshow(rgb)
                     %                     set(ngui.instructionTextbox, 'string', 'cyan - nuclei clusters')
                     set(ngui.legend, 'String', sprintf('%s\n%s', 'Cyan:', 'nuclei clusters'), 'ForegroundColor', [0, 0.8, 0.8])
                 case NIPState.CalculatedNominalMeanNucleusArea
-                    ngui.ndA = ngui.nip.getNucleusData();
-                    J=ngui.nip.getNucleusImage();
-                    N = zeros(1, length(ngui.ndA)); %neuron count of each cluster
-                    P = zeros(2, length(ngui.ndA)); %position of each cluster
-                    for i = 1:numel(ngui.ndA)
-                        if ngui.ndA(i).cluster
-                            N(i) = ngui.ndA(i).numNuclei;
-                            center = ngui.ndA(i).centroid;
-                            P(1,i) = center(2);
-                            P(2, i) = center(1);
-                        end
-                    end
-                    Background = intersect(find(P(1,:) == 0),find(P(2,:) == 0)); %find the indices of background,i.e.coordinate(0,0)
-                    N(Background) = []; %Eliminate the count for the backgound
-                    P(:,Background) = [];
-                    NCluster = reshape(N, numel(N), 1);
-                    ngui.NClusterText = cellstr(num2str(NCluster));
-                    ngui.PCluster = reshape(P,2, numel(P)/2);
-%                     rgb = addBorder(J, ngui.ocbm, [1, 0, 0]);
-%                     rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
-%                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addBorder(J, ngui.Cluster, [0, 1, 1]);
-                    rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
+%                     ngui.ndA = ngui.nip.getNucleusData();
+%                     J=ngui.nip.getNucleusImage();
+%                     N = zeros(1, length(ngui.ndA)); %neuron count of each cluster
+%                     P = zeros(2, length(ngui.ndA)); %position of each cluster
+%                     for i = 1:numel(ngui.ndA)
+%                         if ngui.ndA(i).cluster
+%                             N(i) = ngui.ndA(i).numNuclei;
+%                             center = ngui.ndA(i).centroid;
+%                             P(1,i) = center(2);
+%                             P(2, i) = center(1);
+%                         end
+%                     end
+%                     Background = intersect(find(P(1,:) == 0),find(P(2,:) == 0)); %find the indices of background,i.e.coordinate(0,0)
+%                     N(Background) = []; %Eliminate the count for the backgound
+%                     P(:,Background) = [];
+%                     NCluster = reshape(N, numel(N), 1);
+%                     ngui.NClusterText = cellstr(num2str(NCluster));
+%                     ngui.PCluster = reshape(P,2, numel(P)/2);
+%                     rgb = addBorder(J, ngui.Cluster, [0, 1, 1]);
+%                     rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);
+% 
+%                     rgb = insertText(rgb,[ngui.PCluster(2,:)',ngui.PCluster(1,:)'],ngui.NClusterText,'TextColor','white','FontSize',28, 'BoxOpacity',0);
+                    
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
+                    %/temp
                     figure(ngui.getHandle);
-                    imshow(rgb)
-                    text(ngui.PCluster(2,:),ngui.PCluster(1,:),ngui.NClusterText,'Color','white','FontSize',12,'FontWeight', 'bold') %'Color','cyan', 'BackgroundColor', [.4, .4, .4] - 7/5
-                    %works only if switch the order of P(1,:)
-                    %and P(2,:)  ??
+                    imshow(rgb) 
+
                     set(ngui.legend, 'String', sprintf('%s\n%s', 'Cyan:', 'nuclei clusters'), 'ForegroundColor', [0, 0.8, 0.8])
                 case NIPState.CalculatedMinNucleusArea
-                    ngui.ndA = ngui.nip.getNucleusData();
-                    ngui.Small=false(size(ngui.L));
-                    for i = 1:numel(ngui.ndA)
-                        if ngui.ndA(i).small
-                            ngui.Small = ngui.L==i | ngui.Small;
-                        end
-                    end
-                    J=ngui.nip.getNucleusImage();
-                    %temp
-%                     rgb = addBorder(, ngui.ocbm, [1, 0, 0]);%suspicion - should be removed
-%                     rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);%suspicion
-%                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);%suspicion
-                    rgb = addBorder(J, ngui.Cluster, [0, 1, 1]);%cyan
-                    rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);%blue
-                    rgb = addBorder(rgb, ngui.Small, [1, 0, 1]);%magenta
+%                     ngui.ndA = ngui.nip.getNucleusData();
+%                     ngui.Small=false(size(ngui.L));
+%                     for i = 1:numel(ngui.ndA)
+%                         if ngui.ndA(i).small
+%                             ngui.Small = ngui.L==i | ngui.Small;
+%                         end
+%                     end
+%                     J=ngui.nip.getNucleusImage();
+% 
+%                     rgb = addBorder(J, ngui.Cluster, [0, 1, 1]);%cyan
+%                     rgb = addBorder(rgb, ngui.Single, [0, 0, 1]);%blue
+%                     rgb = addBorder(rgb, ngui.Small, [1, 0, 1]);%magenta
+%                     rgb = insertText(rgb,[ngui.PCluster(2,:)',ngui.PCluster(1,:)'],ngui.NClusterText,'TextColor','white','FontSize',28, 'BoxOpacity',0);
+                    
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
+                    %/temp
                     figure(ngui.getHandle);
-                    imshow(rgb)
-                    text(ngui.PCluster(2,:),ngui.PCluster(1,:),ngui.NClusterText,'Color','white','FontSize',12,'FontWeight', 'bold')%'Color',[0, 0.5, 0.5]
-                    %                     set(ngui.instructionTextbox, 'string', 'magenta - nuclei too small')
+                    imshow(rgb) 
+                    
                     set(ngui.legend, 'String', sprintf('%s\n%s','Magenta:', sprintf('%s\n%s', 'Nuclei too small', 'to be accepted')), 'ForegroundColor', 'magenta')
                 case NIPState.SegmentedCells
-                    I = ngui.nip.getCellImage();
-                    CellMask = ngui.nip.getFirstCellMask();
-                    rgb = addBorder(I, CellMask, [1, 0, 0]);
+%                     I = ngui.nip.getCellImage();
+%                     CellMask = ngui.nip.getFirstCellMask();
+%                     rgb = addBorder(I, CellMask, [1, 0, 0]);
+                   
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
+                    %/temp
                     figure(ngui.getHandle);
                     imshow(rgb)
                     %                     set(ngui.instructionTextbox, 'string', 'red - cell bodies and neurites')
                     set(ngui.legend, 'String', sprintf('%s\n%s\n%s','Cell', 'Image', 'Opened'))
                     set(ngui.legend2, 'String', 'Red: cell bodies and neurites', 'ForegroundColor', 'r')
                 case NIPState.SeparatedBodiesFromNeurites
-                    %Still show the neurite segmentation from previous step
-                    CellMask = ngui.nip.getFirstCellMask();%from previous step: cell bodies and neurites
-                    cbd = ngui.nip.getCellBodyData();
-                    ngui.ocbm = ngui.nip.getOpenedCellBodyMask();%only cell bodies
-                    neuriteMask = CellMask & ~ngui.ocbm; %only neurites
-                    cbaL = ngui.nip.getCellBodyAllLabeled();
-                    fnm = ngui.nip.getFirstNeuriteMask;
-                    fcnm = ngui.nip.getFirstConnectedNeuriteMask;
-                    funm = ngui.nip.getFirstUnconnectedNeuriteMask;
-                    
-                    N = zeros(1, length(cbd)); %neuron count of each cluster
-                    P = zeros(2, length(cbd)); %position of each cluster
-                    for i = 1:numel(cbd)
-                        N(i) = cbd(i).numberOfNuclei;
-                        P(1,i) = cbd(i).centroidRow;
-                        P(2, i) = cbd(i).centroidColumn;
-                    end
-                    Background = intersect(find(P(1,:) == 0),find(P(2,:) == 0)); %find the indices of background,i.e.coordinate(0,0)
-                    N(Background) = []; %Eliminate the count for the backgound
-                    P(:,Background) = [];
-                    NCell = reshape(N, numel(N), 1);
-                    ngui.NCellText = cellstr(num2str(NCell));
-                    ngui.PCell = reshape(P,2, numel(P)/2);
-                    
-                    I = ngui.nip.getCellImage();
-                    rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
-                    %show the neurite in green
-                    rgb = addBorder(rgb,neuriteMask, [0,1,0]);
+%                     %Still show the neurite segmentation from previous step
+%                     CellMask = ngui.nip.getFirstCellMask();%from previous step: cell bodies and neurites
+%                     cbd = ngui.nip.getCellBodyData();
+%                     ngui.ocbm = ngui.nip.getOpenedCellBodyMask();%only cell bodies
+%                     neuriteMask = CellMask & ~ngui.ocbm; %only neurites
+%                     cbaL = ngui.nip.getCellBodyAllLabeled();
+%                     fnm = ngui.nip.getFirstNeuriteMask;
+%                     fcnm = ngui.nip.getFirstConnectedNeuriteMask;
+%                     funm = ngui.nip.getFirstUnconnectedNeuriteMask;
+%                     
+%                     N = zeros(1, length(cbd)); %neuron count of each cluster
+%                     P = zeros(2, length(cbd)); %position of each cluster
+%                     for i = 1:numel(cbd)
+%                         N(i) = cbd(i).numberOfNuclei;
+%                         P(1,i) = cbd(i).centroidRow;
+%                         P(2, i) = cbd(i).centroidColumn;
+%                     end
+%                     Background = intersect(find(P(1,:) == 0),find(P(2,:) == 0)); %find the indices of background,i.e.coordinate(0,0)
+%                     N(Background) = []; %Eliminate the count for the backgound
+%                     P(:,Background) = [];
+%                     NCell = reshape(N, numel(N), 1);
+%                     ngui.NCellText = cellstr(num2str(NCell));
+%                     ngui.PCell = reshape(P,2, numel(P)/2);
+%                     
+%                     I = ngui.nip.getCellImage();
+%                     rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
+%                     %show the neurite in green
+%                     rgb = addBorder(rgb,neuriteMask, [0,1,0]);
+% 
+%                     rgb = insertText(rgb,[ngui.PCell(2,:)',ngui.PCell(1,:)'],ngui.NCellText,'TextColor','white','FontSize',28, 'BoxOpacity',0);
+                     
+         
+
+                    rgb = createIntermediateImages(state,ngui.nip);
                     figure(ngui.getHandle);
-                    imshow(rgb)
-                    text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','white','FontSize',12,'FontWeight', 'bold')
+                    imshow(rgb) 
+                    
+                  
+
                     set(ngui.legend, 'String', sprintf('%s\n%s','Red:', 'cell bodies'), 'ForegroundColor', 'r')
                 case NIPState.ResegmentedNeurites
-                    cnm = ngui.nip.getSecondConnectedNeuriteMask();
-                    unm = ngui.nip.getSecondUnconnectedNeuriteMask();
-                    I = ngui.nip.getCellImage();
+%                     cnm = ngui.nip.getSecondConnectedNeuriteMask();
+%                     unm = ngui.nip.getSecondUnconnectedNeuriteMask();
+%                     I = ngui.nip.getCellImage();
+%                     
+%                     %also have ngui.nip.getSecondNeuriteMask
+%                     
+%                     rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
+%                     rgb = addBorder(rgb, cnm, [0, 1, 0]);
+%                     rgb = addBorder(rgb, unm, [1, 1, 0]);
+%                     rgb = insertText(rgb,[ngui.PCell(2,:)',ngui.PCell(1,:)'],ngui.NCellText,'TextColor','white','FontSize',28, 'BoxOpacity',0);
                     
-                    %also have ngui.nip.getSecondNeuriteMask
-                    
-                    rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
-                    rgb = addBorder(rgb, cnm, [0, 1, 0]);
-                    rgb = addBorder(rgb, unm, [1, 1, 0]);
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
+                    %/temp
                     figure(ngui.getHandle);
-                    imshow(rgb)
-                    text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','white','FontSize',12,'FontWeight', 'bold')
-                    %                     set(ngui.instructionTextbox, 'string', sprintf('%s\n%s,', 'green - connected neurites', 'yellow - unconnected neurites'))
+                    imshow(rgb) 
+                    
                     set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'connected neurites'), 'ForegroundColor', [0, 0.9, 0])
                     set(ngui.legend2, 'String', sprintf('%s\n%s', 'Yellow:', 'unconnected neurites'), 'ForegroundColor', [0.78, 0.78, 0])
                 case NIPState.ResegmentedNeuriteEdges  %3rd Neurite Segmentation - added on 6/17/16
-                    cnm = ngui.nip.getThirdConnectedNeuriteMask();
-                    unm = ngui.nip.getThirdUnconnectedNeuriteMask();
-                    I = ngui.nip.getCellImage();
-                    rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
-                    rgb = addBorder(rgb, cnm, [0, 1, 0]);
-                    rgb = addBorder(rgb, unm, [1, 1, 0]);
+%                     cnm = ngui.nip.getThirdConnectedNeuriteMask();
+%                     unm = ngui.nip.getThirdUnconnectedNeuriteMask();
+%                     I = ngui.nip.getCellImage();
+%                     rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
+%                     rgb = addBorder(rgb, cnm, [0, 1, 0]);
+%                     rgb = addBorder(rgb, unm, [1, 1, 0]);
+%                     rgb = insertText(rgb,[ngui.PCell(2,:)',ngui.PCell(1,:)'],ngui.NCellText,'TextColor','white','FontSize',28, 'BoxOpacity',0);
+                    
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
+                    %/temp
                     figure(ngui.getHandle);
-                    imshow(rgb)
-                    text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','white','FontSize',12,'FontWeight', 'bold')
+                    imshow(rgb) 
+                    
                     set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'connected neurites'), 'ForegroundColor', [0, 0.9, 0])
                     set(ngui.legend2, 'String', sprintf('%s\n%s', 'Yellow:', 'unconnected neurites'), 'ForegroundColor', [0.78, 0.78, 0])
                 case NIPState.ClosedNeuriteMask
-                    ngui.ccnm = ngui.nip.getClosedConnectedNeuriteMask();
-                    ngui.cunm = ngui.nip.getClosedUnconnectedNeuriteMask();
-                    I = ngui.nip.getCellImage();
-                    
-                    %Also have ngui.nip.getClosedNeuriteMask
-                    
-                    rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
-                    rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
-                    rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
+%                     ngui.ccnm = ngui.nip.getClosedConnectedNeuriteMask();
+%                     ngui.cunm = ngui.nip.getClosedUnconnectedNeuriteMask();
+%                     I = ngui.nip.getCellImage();
+%                     rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
+%                     rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
+%                     rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
+%                     rgb = insertText(rgb,[ngui.PCell(2,:)',ngui.PCell(1,:)'],ngui.NCellText,'TextColor','white','FontSize',28, 'BoxOpacity',0);
+                      
+                    %temp 10/27/16
+                    rgb = createIntermediateImages(state,ngui.nip);
+                    %/temp
+
                     figure(ngui.getHandle);
-                    imshow(rgb)
-                    text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','white','FontSize',12,'FontWeight', 'bold')
-                    %commented for shooting video - 7/26/2016
-                    [FileName, PathName]=uiputfile('*.*','Save parameters as');
-                    parameterData=strcat(PathName, FileName)
-                    ngui.nip.writeParametersFile(parameterData)
+                    imshow(rgb) 
                     set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'connected neurites'), 'ForegroundColor', [0, 0.9, 0])
                     set(ngui.legend2, 'String', sprintf('%s\n%s', 'Yellow:', 'unconnected neurites'), 'ForegroundColor', [0.78, 0.78, 0])
-                case NIPState.SkeletonizedNeurites
-                    cns = ngui.nip.getConnectedNeuriteSkeleton();
-                    uns = ngui.nip.getUnconnectedNeuriteSkeleton();
-                    I = ngui.nip.getCellImage();
-                    rgb = addBorder(I, ngui.ocbm, [1, 0, 0]);
-                    rgb = addBorder(rgb, ngui.ccnm, [0, 1, 0]);
-                    rgb = addBorder(rgb, ngui.cunm, [1, 1, 0]);
-                    rgb = addBorder(rgb, ngui.ocbm, [1, 0, 0]);
-                    rgb = addBorder(rgb,cns,[0, 1, 0]);
-                    rgb = addBorder(rgb,uns,[1, 1, 0]);
-                    figure(ngui.getHandle);
-                    imshow(rgb)
-                    text(ngui.PCell(2,:),ngui.PCell(1,:),ngui.NCellText,'Color','white','FontSize',12,'FontWeight', 'bold')
-                    set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'connected neurites'), 'ForegroundColor', [0, 0.9, 0])
-                    set(ngui.legend2, 'String', sprintf('%s\n%s', 'Yellow:', 'unconnected neurites'), 'ForegroundColor', [0.78, 0.78, 0])
-                case NIPState.CreatedGraph
-                    I=ngui.nip.getGraphImage;
-                    figure(ngui.getHandle);
-                    imshow(I)
-                    set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'connected neurites'), 'ForegroundColor', [0, 0.9, 0])
-                    set(ngui.legend2, 'String', sprintf('%s\n%s', 'Yellow:', 'unconnected neurites'), 'ForegroundColor', [0.78, 0.78, 0])
+               
                     
-                case NIPState.ComputedPaths
-                    %writeParametersFile()
-                    %
-                    %
-                    %                     y = figure;
-                    %                     y
-                    %                     size(y)
-                    %                     y,uicontrol('Style', 'pushbutton', 'String', 'Quit', ...
-                    %                         'Position', [0 0 150 70], 'Callback', @quitButtonCallback);
-                    %                     uicontrol('Style', 'pushbutton', 'String', 'Continue',...
-                    %                         'Position', [410 0 150 70], 'Callback', @continueButtonCallback)
-                    %
+                   
+                case NIPState.Done
+                    %temp 10.26.16
+                    %display the final image
+%                     I = ngui.nip.getCellImage();
+%                     cbd = ngui.nip.getCellBodyData();
+% %                     class(cbd)
+% %                     cbd(1)
+%                     maskshort = zeros(length(I(:))); %initialize short neurite mask (vector)
+%                     %Extract short paths
+%                     n = length(cbd);%# of cell clusters
+%                     
+%                     for i = 1:n
+%                         numshort = length(cbd(i).shortPaths);%# of short paths of a cluster
+%                         for j = 1:numshort
+%                             short = cbd(i).shortPaths(j);
+%                             edgestack= short.edgeStack;
+%                             sz = edgestack.size();
+%                             for k = 1:sz
+%                                 shortmask = shortmask + ones(I(edgestack.pop()));
+%                             end
+%                         end
+%                     end
+%                     shortmask = reshape(shortmask, size(I));
+%                     figure 
+%                     imshow(shortmask)
+%                     %/temp
+
+                   
+                   
+                    
+%                     fprintf('here')
+                    rgb = createIntermediateImages(state,ngui.nip);
+                    
+                    
+                    figure(ngui.getHandle);
+                    imshow(rgb) 
+                    set(ngui.legend, 'String', sprintf('%s\n%s','Green:', 'Long neurites'), 'ForegroundColor', [0, 0.9, 0])
+                    set(ngui.legend2, 'String', sprintf('%s\n%s', 'Blue:', 'Short neurites'), 'ForegroundColor', 'b')
+                    
+                     %temp 11/1/16
+                    %create a data table and display the table on a figure
+                    %window
+                    [dHeader,dataCell] = createDataTable(ngui.nip);
+                    fTable = figure;
+                    tHandle = uitable(fTable);
+                    set(tHandle, 'Data', dataCell, 'Units', 'normalized','Position' , [0,0,1,1], 'RowName', ({}), 'ColumnName',dHeader);
+                    %/temp
+                    
+               %comment on 11/1/16, we don't want the dialog box to pop up
+               %automatically
+%                     %save parameters to a file - automatic popup window
+%                     [FileName, PathName]=uiputfile('*.*','Save parameters as');
+%                     
+%                     
+%                     parameterData=strcat(PathName, FileName);
+%                     ngui.nip.writeParametersFile(parameterData)
+                    
+                
                     
                 otherwise
                     error('[NeuronGUI.updateUser] Unexpected State: %s', char(state));
@@ -420,7 +490,7 @@ classdef NeuronGUI < handle
             for i=1:numel(ngui.parameters)
                 if ngui.parameters(i).active
                     enbl='on';
-                    ngui.parameters(i).description % descriptions are empty now
+%                     ngui.parameters(i).description % descriptions are empty now
                 else
                     enbl='off';
                 end
@@ -467,6 +537,10 @@ classdef NeuronGUI < handle
             rmpath(ngui.parent)   %remove the GAIN directory when the user quits the program
         end
         function batchButtonCallback(ngui,UIhandle, x)% "Exit to batch processing" button
+             %temp 10/28/16
+             %Hide wait bar for the final image in batch mode
+             ngui.nip.showWaitBar(false)
+             %/temp
             ngui.batch = figure;
             %hide the figure toolbar
             set(ngui.batch, 'menubar', 'none', 'name', 'Settings for Batch Processing','numbertitle','off');
@@ -537,7 +611,10 @@ classdef NeuronGUI < handle
         end
         function controlPanelButtonCallback(ngui,UIhandle, x) %back to control panel(cancel button)
             %                 error('Terminate batch processing.')
-            
+             %temp 10/28/16
+             %show wait bar for the final image in interactive mode
+             ngui.nip.showWaitBar(true)
+             %/temp
             ngui.flag = 1;%clicking the button changes the flag - which terminates the processing
             if ishandle(ngui.batch)
             close(ngui.batch)   %close batch processing window

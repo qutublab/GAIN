@@ -4,8 +4,11 @@
 
 function [S, branchPoints, endPoints] = skeletonize3(neuriteMask, cellBodyMask) %, cellNumberGrid, numCellBodies) %, tujImage)
 
+
 % Skeletonize mask
 S = bwmorph(neuriteMask, 'skel', Inf) & ~cellBodyMask;
+
+
 
 %figure, imshow(double(cat(3, neuriteMask, neuriteMask | cellBodyMask, zeros(size(neuriteMask)))));
 %figure, imshow(S);
@@ -26,6 +29,9 @@ for i = 1:2
         h = rot90(h);
     end
 end
+
+
+
 % Reskeltonize
 S = bwmorph(S2 == 1, 'skel', Inf);
 
@@ -117,6 +123,7 @@ branchPoints = bwmorph(S, 'branchpoints') & S;
 %
 % S = (S & ~removalMask) | branchExtensions;
 
+
 % Remove unrecognized branch points
 S2 = double(S);
 h = [1 1 -1; 1 1 -1; 1 -1 -1];
@@ -174,13 +181,13 @@ for i = 1:4
 end
 h = [-1 -1 -1; -1 10 -1; 10 10 -1];
 h2 = [1 1 1; -1 10 -1; 0 0 0];
+
+
 for i = 1:4
     unnecessaryBranch = (imfilter(double(branchPoints), h) == 30) & (imfilter(double(S), h2) == 11);
     branchPoints = branchPoints & ~unnecessaryBranch;
     h = rot90(h);
     h2 = rot90(h2);
 end
-
-
 
 end
