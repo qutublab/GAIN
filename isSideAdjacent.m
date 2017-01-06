@@ -10,7 +10,8 @@ else
     if diff == (numRows - 1) || diff == (numRows + 1)
         s = false;
     else
-        error('[findEdges2.isSideAdjacent] %d and %d are not adjacent (numRows=%d)', p1, p2, numRows)
+        [R C] = ind2sub(sz, [p1, p2]);
+        error('[isSideAdjacent] %d (r=%d,c=%d) and %d (r=%d,c=%d) are not adjacent (numRows=%d)', p1, R(1), C(1), p2, R(2), C(2), numRows)
     end
 end
 end

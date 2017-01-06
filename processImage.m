@@ -1,8 +1,13 @@
 function nip = processImage()
-fileNameCA = strcat('D:\Rice\Research\Qutub Lab\NeuronGUI\GitHub\GAIN-master\NeuronImageProcessor8\Images\', ...
-    {'image_8.tif', 'paramopt-tuj12.tif', 'paramopt-tuj13.tif', ...
-    'paramopt-tuj14190.tif', 'paramopt-tuj14192.tif', ...
-    'paramopt-tuj14194.tif', 'paramopt-tuj14198.tif'});
+%fileNameCA = strcat('/home/bl6/NeuronImages/GUI/NeuronGUI4b/ImagesNoScaleBars/', ...
+%    {'paramopt-tuj11.tif', 'paramopt-tuj12.tif', 'paramopt-tuj13.tif', ...
+%    'paramopt-tuj14190.tif', 'paramopt-tuj14192.tif', ...
+%    'paramopt-tuj14194.tif', 'paramopt-tuj14198.tif'});
+
+fileNameCA = strcat('/home/bl6/NeuronImages/GUI/NeuronGUI4b/ImagesNoScaleBars/CroppedGray/', ...
+    {'gray_combined_11.tif', 'gray_combined_12.tif', 'gray_combined_13.tif', ...
+    'gray_combined_14170.tif', 'gray_combined_14172.tif', ...
+    'gray_combined_14174.tif', 'gray_combined_14176.tif'});
 fileName = fileNameCA{1};
 %fileName = '/home/bl6/GitHub/CalibrationModel/combined1.tif';
 p = Parameters();
@@ -17,10 +22,15 @@ p.initialize2();
 p.fileName = fileName;
 %p.tujThreshFactor1 = 0.75;
 %p.tujThreshFactor2 = 1.2;
-%p.tujThreshFactor3 = 1.8;
-%p.branchResolutionDistance = 17;
+%p.tujThreshFactor3 = 1.5;
+p.branchResolutionDistance = 10;
+p.branchResolutionDistance = 15;
 
 
+p.tujThreshFactor1 = 1;
+p.tujThreshFactor2 = 1.2;
+p.tujThreshFactor3 = 1.6;
+p.branchResolutionDistance = 18;
 
 
 outputDir = 'ExampleResults';
@@ -42,8 +52,9 @@ if ~success
 end
 
 nip = NeuronImageProcessor();
-nip.showWaitBar(true)
-%nip.showWaitBar(true);
+nip.showWaitBar(true);
+%nip.showWaitBar(false);
+nip.showTiming(true);
 
 % Extract file name 
 % Ignore directory names
@@ -62,54 +73,64 @@ end
 % Add directory to prefix
 prefix = [outputDir, filesep, prefix0];
 
+
 nip.processImage(p);
 %nip.processImage(p, 13);
-%nip.processImage(p, 12);
 
 
-% % 1 Read Images
-% N0 = nip.getNucleusImage();
+T = nip.getCellImage();
+figure, imshow(T);    % figure 1
+
+CB = nip.getOpenedCellBodyMask();
+CBb = CB & ~imerode(CB, true(3));
+CN1 = nip.getFirstConnectedNeuriteMask();
+UN1 = nip.getFirstUnconnectedNeuriteMask();
+CN1b = CN1 & ~imerode(CN1, true(3));
+UN1b = UN1 & ~imerode(UN1, true(3));
+r = T; r(CBb | CN1b | UN1b) = 0; g = r; b = r;
+r(CBb) = 1;
+g(CN1b) = 1;
+b(UN1b) = 1;
+figure, imshow(cat(3, r, g, b));    % figure 2
+
+ECB = nip.getExtendedCellBodyMask();
+ECBb = ECB & ~imerode(ECB, true(3));
+CN2 = nip.getSecondConnectedNeuriteMask();
+UN2 = nip.getSecondUnconnectedNeuriteMask();
+CN2b = CN2 & ~imerode(CN2, true(3));
+UN2b = UN2 & ~imerode(UN2, true(3));
+r = T; r(CBb | ECBb | CN2b | UN2b) = 0; g = r; b = r;
+r(CBb | ECBb) = 1;
+g(CN2b) = 1;
+b(UN2b) = 1;
+figure, imshow(cat(3, r, g, b));     % figure 3
+
+CN3 = nip.getThirdConnectedNeuriteMask();
+UN3 = nip.getThirdUnconnectedNeuriteMask();
+CN3b = CN3 & ~imerode(CN3, true(3));
+UN3b = UN3 & ~imerode(UN3, true(3));
+r = T; r(CBb | ECBb | CN3b | UN3b) = 0; g = r; b = r;
+r(CBb | ECBb) = 1;
+g(CN3b) = 1;
+b(UN3b) = 1;
+figure, imshow(cat(3, r, g, b));      % figure 4
+
+CN4 = nip.getClosedConnectedNeuriteMask();
+UN4 = nip.getClosedUnconnectedNeuriteMask();
+CN4b = CN4 & ~imerode(CN4, true(3));
+UN4b = UN4 & ~imerode(UN4, true(3));
+r = T; r(CBb | ECBb | CN4b | UN4b) = 0; g = r; b = r;
+r(CBb | ECBb) = 1;
+g(CN4b) = 1;
+b(UN4b) = 1;
+figure, imshow(cat(3, r, g, b));    % figure 5
+
+
  C0 = nip.getCellImage();
-% 
-% % 2 First Nucleus Segmentation
-% N1 = nip.getFirstNucleusMask();
-% 
-% % 3 Second Nucleus Segmentation
-% N2 = nip.getSecondNucleusMask();
-% 
-% % 4 Open Nucleus Mask
-% % 5 Identify Nucleus Clusters
-% % 6 Calculate Mean Nucleus Area
-% % 7 Calculate Minimum Nucleus Area
-% 
-% % 8 Segment Cell Bodies
-% C1 =  nip.getFirstCellMask();
-% 
-% % 9 Isolate Cell Bodies
  C2 = nip.getOpenedCellBodyMask();
-% C3 = nip.getFirstNeuriteMask();
-% 
-% % 10 Resegment for Neurites
-% 
-% C4 = nip.getSecondNeuriteMask();
  ECB = nip.getExtendedCellBodyMask();
  NE = nip.getNeuriteExtensions();
-% 
-% % 11 Resegment Neurites from Edges
-% 
  C5 = nip.getThirdNeuriteMask();
-% 
-% % 12 Close Neurite mask
-% 
-% C6 = nip.getClosedNeuriteMask();
-% C6c = nip.getClosedConnectedNeuriteMask();
-% C6u = nip.getClosedUnconnectedNeuriteMask();
-% 
-% 
-% % 13 Skeletonize Neurites
-% 
-% %CS = nip.getConnectedNeuriteSkeleton();
-% %US = nip.getUnconnectedNeuriteSkeleton();
 
 r = C0;
 cellBodyBrdr = (C2 & ~imerode(C2, true(3))) | (ECB & ~imerode(ECB, true(3)));
@@ -124,8 +145,10 @@ r(cellBodyBrdr) = 1;
 g(neuriteBrdr) = 1;
 b(neBrdr) = 1;
 
-%figure, imshow(cat(3, r, g, b));
-%return;
+
+imwrite(nip.getFirstCellMask(), [prefix, '-firstcellmask.tif'], 'tif', 'Compression', 'none');
+imwrite(nip.getSecondCellMask(), [prefix, '-secondcellmask.tif'], 'tif', 'Compression', 'none');
+
 
 imwrite(nip.getThirdNeuriteMask(), [prefix, '-thirdneuritemask.tif'], 'tif', 'Compression', 'none');
 imwrite(nip.getThirdConnectedNeuriteMask(), [prefix, '-thirdconnectedneuritemask.tif'], 'tif', 'Compression', 'none');
@@ -179,8 +202,26 @@ end
 imwrite(longPathSkel, strcat(prefix,'-longPathSkel.tif'), 'tif', 'Compression', 'none');
 imwrite(shortPathSkel, strcat(prefix,'-shortPathSkel.tif'), 'tif', 'Compression', 'none');
 
+
+createFigure2(outputDir, prefix);
 createFigure3(outputDir, prefix);
-createFigure9(outputDir, prefix);
+%createFigure9(outputDir, prefix);
+fig9a = nip.getCellImage();
+% Add 100-micron scale bar.  Note that the 100 micron scale bar is 154
+% pixels long and 14 pixels high.
+fig9a(((end-5) - (14 - 1)):(end-5), ((end-5) - (154 - 1)):(end-5)) = 1;
+fig9b = nip.getResultsImage();
+
+fig9aName = [outputDir, filesep, 'fig9a.tif'];
+fig9bName = [outputDir, filesep, 'fig9b.tif'];
+imwrite(fig9a, fig9aName, 'tif', 'Compression', 'none');
+fprintf('Wrote file %s\n', fig9aName);
+imwrite(fig9b, fig9bName, 'tif', 'Compression', 'none');
+fprintf('Wrote file %s\n', fig9bName);
+
+
+%figure, imshow(fig9a);
+%figure, imshow(fig9b);
 
 
 nbdArr = nip.getCellBodyData();

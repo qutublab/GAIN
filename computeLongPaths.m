@@ -7,11 +7,15 @@ numClusters = numel(neuronBodyDataArr);
 if showWaitBar
     h = waitbar(0, sprintf('Processing cell cluster %d of %d', 0, numClusters));
 end
+timing = zeros(numel(neuronBodyDataArr), 1);
+fprintf('[computeLongPaths] %d cell body clusters\n', numel(neuronBodyDataArr));
 %for d = 7    %1:numel(neuronBodyDataArr)  byron
+%for d = 12     %1:numel(neuronBodyDataArr)
 for d = 1:numel(neuronBodyDataArr)
+    tstart = tic;
     if showWaitBar & ishandle(h)
         waitbar(d / numClusters, h, sprintf('Processing cell cluster %d of %d', d, numClusters));
-    end
+    end  % if
 
     longPaths = Stack();
     shortPaths = Stack();
@@ -25,7 +29,8 @@ for d = 1:numel(neuronBodyDataArr)
         minNeuriteLength = 3 * avgDiameter;
 %        fprintf('[computeLongPaths] Computing walks for neuron body: %d\n', d);
 %         tic;
-        pathStack = G.allStraightWalksFromTujBody(d, junctionSpan);
+%        pathStack = G.allStraightWalksFromTujBody(d, junctionSpan);
+        pathStack = G.allWalksFromCellBody(d, junctionSpan);
 %         et = toc;
 %         fprintf('[computeLongPaths] time: %f\n', et);
         numPaths = pathStack.size();
@@ -37,7 +42,7 @@ for d = 1:numel(neuronBodyDataArr)
             clear paths;
             for n = numPaths:-1:1
                 paths(n) = pathStack.pop();
-            end
+            end  % if
             [~, idx] = sort([paths.distance], 'descend');
             paths = paths(idx);
             for p = 1:numPaths   %1:min(numCells, numPaths)
@@ -52,11 +57,11 @@ for d = 1:numel(neuronBodyDataArr)
                 else
                     shortNeuriteCount = shortNeuriteCount + 1;
                     shortPaths.push(path);
-                end
+                end  % if
 %                 et = toc;
 %                 fprintf('[computeLongPaths] time: %f\n', et);
-            end
-        end
+            end % for
+        end  % if
         nbd.minNeuriteLength = minNeuriteLength;
         nbd.longNeuriteCount = longNeuriteCount;
         nbd.longestNeuriteLength = longest;
@@ -64,10 +69,21 @@ for d = 1:numel(neuronBodyDataArr)
         nbd.longPaths = longPaths.toCellArray();
         nbd.shortPaths = shortPaths.toCellArray();
 %     end
+timing(d) = toc(tstart);
+%fprintf('[computeLongPaths] End of loop body d=%d\n', d)
 end
 if showWaitBar & ishandle(h)
     close(h);
 end
+
+numTimings = numel(timing);
+fprintf('[computeLongPaths] minimum time=%f (of %d)\n', min(timing), numTimings);
+[mx mxIndex] = max(timing);
+fprintf('[computeLongPaths] maximum time=%f for %dth element (of %d)\n', max(timing), mxIndex, numTimings);
+fprintf('[computeLongPaths] mean time=%f (of %d)\n', mean(timing), numTimings);
+fprintf('[computeLongPaths] median time=%f (of %d)\n', median(timing), numTimings);
+
+
 
 
 %fprintf('Total Neurite Length: %f pixel widths\n', totalNeuriteLength);

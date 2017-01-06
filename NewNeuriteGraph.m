@@ -33,6 +33,9 @@ classdef NewNeuriteGraph < handle
         % one encountered is remembered because a vertex at the end of a spur
         % has only one neighbor
         shortEdgeNeighborVertex
+
+% nx2 array of indices where each row has the end point indices of a spur
+spurVertexLocations
     end
     
     methods
@@ -71,7 +74,9 @@ classdef NewNeuriteGraph < handle
                 idx2 = find(edgeLocations == 0, 1);
                 ng.edgeLocator(idx1, idx2) = i;
                 ng.edgeCountByVertex(v1) = ng.edgeCountByVertex(v1) + 1;
-                ng.edgeCountByVertex(v2) = ng.edgeCountByVertex(v2) + 1;
+                if v1 ~= v2
+                    ng.edgeCountByVertex(v2) = ng.edgeCountByVertex(v2) + 1;
+                end
                 if e.distance > maxSpurLength
                     ng.longEdgeCountByVertex(v1) = ng.longEdgeCountByVertex(v1) + 1;
                     ng.longEdgeCountByVertex(v2) = ng.longEdgeCountByVertex(v2) + 1;
@@ -129,6 +134,50 @@ classdef NewNeuriteGraph < handle
             % hold:
             % 1. v1 has only a single, short edge incident upon it.
             % 2. v1 and v2 do not touch cell bodies
+%tic;
+            spurStack = Stack();
+
+            % Identify vertices that do not touch cell bodies
+            nonCellVertices = cellfun(@isempty, ng.vertexattujbody);
+
+            % Identify vertices with one, short edge and not touching a cell
+            % body
+            loneVertices = find(ng.edgeCountByVertex == 1 ...
+                & ng.longEdgeCountByVertex == 0 & nonCellVertices);
+
+            % Identify neighbors of loneVertices
+            loneVertexNeighbors = ng.shortEdgeNeighborVertex(loneVertices);
+
+            % An acceptable potential neighbor, v2, does not touch a cell body
+            acceptablePotentialNeighborVertices = nonCellVertices;
+
+            acceptableActualNeighbors = acceptablePotentialNeighborVertices(loneVertexNeighbors);
+
+            spurVertices1 = loneVertices(acceptableActualNeighbors);
+            spurVertices2 = loneVertexNeighbors(acceptableActualNeighbors);
+
+
+            vertex1Coord = ng.vertexlocations(spurVertices1, :);
+            vertex2Coord = ng.vertexlocations(spurVertices2, :);
+            vertex1Ind = sub2ind(ng.imageSize, vertex1Coord(:, 1), vertex1Coord(:, 2));
+            vertex2Ind = sub2ind(ng.imageSize, vertex2Coord(:, 1), vertex2Coord(:, 2));
+            ng.spurVertexLocations = [vertex1Ind(:) vertex2Ind(:)];
+
+%toc;
+%tic;
+            arrayfun(@(v1, v2)ng.clearEdges(v1, v2), spurVertices1, spurVertices2);
+%toc;
+%fprintf('[NewneuriteGraph.removeSpurs4] Removed %d edges\n', numel(spurVertices1));
+        end
+
+
+        function removeSpurs4OLD(ng)
+%fprintf('[NeuriteGraph.removeSpurs4] Begin...\n');
+%tic;
+            % An edge between v1 and v2 is removed if all of the following
+            % hold:
+            % 1. v1 has only a single, short edge incident upon it.
+            % 2. v1 and v2 do not touch cell bodies
             % 3. v2 has at least two other edges which are long
 %tic;
             spurStack = Stack();
@@ -154,10 +203,18 @@ classdef NewNeuriteGraph < handle
             spurVertices1 = loneVertices(acceptableActualNeighbors);
             spurVertices2 = loneVertexNeighbors(acceptableActualNeighbors);
 
+
+            vertex1Coord = ng.vertexlocations(spurVertices1, :);
+            vertex2Coord = ng.vertexlocations(spurVertices2, :);
+            vertex1Ind = sub2ind(ng.imageSize, vertex1Coord(:, 1), vertex1Coord(:, 2));
+            vertex2Ind = sub2ind(ng.imageSize, vertex2Coord(:, 1), vertex2Coord(:, 2));
+            ng.spurVertexLocations = [vertex1Ind(:) vertex2Ind(:)];
+
 %toc;
 %tic;
             arrayfun(@(v1, v2)ng.clearEdges(v1, v2), spurVertices1, spurVertices2);
 %toc;
+fprintf('[NewneuriteGraph.removeSpurs4] Removed %d edges\n', numel(spurVertices1));
         end
 
 
@@ -548,7 +605,11 @@ return;
         function bestPaths = findBestPaths(ng, v, currPath, span, unitTarget)
             r = ng.vertexlocations(v, 1);
             c = ng.vertexlocations(v, 2);
+tstart = tic;
             [bestStarts bestCosine] = ng.findBestStartsFromVertex(v, currPath, r, c, span, unitTarget);
+if v == 2464
+fprintf('[NewNeuriteGraph.findBestPaths] time=%f\n', toc(tstart));
+end
             bestPaths = Stack();
             while ~bestStarts.empty()
                 path = bestStarts.pop();
@@ -576,22 +637,19 @@ return;
         end
         
 
+
 % :01:
         % Returns longest straight paths from a cell body
         function pathStack = allStraightWalksFromTujBody(ng, nbi, span)
             pathStack = Stack();
-%            fprintf('[NeuriteGraph.allStraightWalksFromTujBody] Begin checking edges from cluster %d\n', nbi);
-% 1247 1275 1283 1286 1295 1319 1323 1358 1376
             for v = 1:ng.numvertices
                 if ~isempty(find(ng.vertexattujbody{v} == nbi))
+                    % Calculate the unit vector that is normal to the cell
+                    % body at vertex v
                     [unitTarget distToV] = ng.unitNormalVector(v, nbi);
                     pth = Path(distToV, Stack(), v, v);
                     pth.fromBody = ng.vertexattujbody{v};
-%                    tic;
                     bestPaths = ng.findBestPaths(v, pth, span, unitTarget);
-%                    et = toc;
-%                    fprintf('[NeuriteGraph.allStraightWalksFromTujBody] time: %f\n', et);
-%                     fprintf('[NeuriteGraph.allStraightWalksFromTujBody] Found %d paths at vertex %d of cluster %d\n', bestPaths.size(), v, nbi);
                     % Keep longest path from each vertex
                     maxLength = -1;
                     longestPath = [];
@@ -619,30 +677,341 @@ return;
             pathCellArr = pathStack.toCellArray();
             for i = 1:numel(pathCellArr)
                 pth = pathCellArr{i};
-%                 fprintf('[NeuriteGraph.allStraightWalksFromTujBody] class:%s\n', class(pth));
                 edgeCellArr = pth.edgeStack.toCellArray();
                 for j = 1:numel(edgeCellArr)
                     edgeCellArr{j}.used = false;
                 end
             end
-%             fprintf('[NeuriteGraph.allStraightWalksFromTujBody] Found %d paths for cluster %d\n', pathStack.size(), nbi);
         end
         
-%        function edgeStack = unusedEdges(ng, v, used)
-%            edgeStack = Stack();
-%            for v2 = 1:ng.numvertices
-%                edgesBox = ng.getEdgesBox(v, v2);
-%                if ~isempty(edgesBox)
-%                    edges = edgesBox.v;
-%                    for i = 1:numel(edges)
-%                        e = edges(i);
-%                        if (~e.used) && (~used(e.idNum))
-%                            edgeStack.push(e);
+	function lat = createLookAheadTree(ng, v, usedEdgeFlags)
+            lat = Tree();
+            edgeCA = ng.unusedEdges(v, usedEdgeFlags);
+            for i = numel(edgeCA):-1:1
+                lat.setChild(i, Tree(edgeCA{i}));
+            end
+        end
+
+        function iuv = makeIncomingUnitVector(ng, v, edgeStack, dist)
+            vrc = ng.vertexlocations(v, :);
+            vr = vrc(1);
+            vc = vrc(2);
+            [pr pc] = ng.followEdges(v, edgeStack, dist);
+            iuv = ng.makeUnitVector([vr - pr, vc - pc]);
+        end
+
+	% If varargin contains a single argument, then that argument is a
+        % vertex id number.  Otherwise vargin contains the row and column
+        % coordinates of a point.
+        function ouv = makeOutgoingUnitVector(ng, v, varargin)
+            vrc = ng.vertexlocations(v, :);
+            vr = vrc(1);
+            vc = vrc(2);
+            if numel(varargin) == 1
+                v2 = varargin{1};
+                v2rc = ng.vertexlocations(v2, :);
+                v2r = v2rc(1);
+                v2c = v2rc(2);
+            else
+                v2r = varargin{1};
+                v2c = varargin{2};
+            end
+            ouv = ng.makeUnitVector([v2r - vr, v2c - vc]);
+        end
+
+        function pathStack = allWalksFromCellBody(ng, nbi, span)
+edgeCount1637 = ng.edgeCountByVertex(1637);
+            pathStack = Stack();
+            usedEdgeFlags = false(size(ng.edgeTable));
+            for v = 1:ng.numvertices
+                if ~isempty(find(ng.vertexattujbody{v} == nbi))
+                    [unitIncomingVector distToV] = ng.unitNormalVector(v, nbi);
+%                    lookAheadTree = ng.createLookAheadTree(v, usedEdgeFlags);
+                    lookAheadTree = Tree([]);
+                    edgeStack = Stack();
+                    pathLength = distToV;
+                    currV = v;
+                    while ~(lookAheadTree.isLeaf() && lookAheadTree.isExpanded())
+                        ng.rateEdges(lookAheadTree, currV, span, unitIncomingVector, usedEdgeFlags);
+                        if lookAheadTree.isLeaf()
+                            % If after expansion byRateEgdes, the lookAheadTree
+                            % is still a leaf, then there are no more edges to
+                            % use.
+                            break;
+                        end
+
+                        maxCosine = -Inf;
+                        maxCosineTree = [];
+                        for i = 1:lookAheadTree.numChildren()
+                            t = lookAheadTree.getChild(i);
+                            cosine = t.value();
+                            if cosine > maxCosine
+                                maxCosine = cosine;
+                                maxCosineTree = t;
+                            end
+                        end
+if ~isa(maxCosineTree, 'Tree')
+fprintf('*****  v=%d\n', v);
+fprintf('*****  currV=%d\n', currV);
+fprintf('*******   vertex 1637 has %d edges\n', edgeCount1637);
+lookAheadTree.getNode()
+cosine
+maxCosineTree
+fprintf('lookAheadTree has %d children\n', lookAheadTree.numChildren());
+error()
+end
+                        edge = maxCosineTree.getNode();
+                        pathLength = pathLength + edge.distance;
+                        edgeStack.push(edge);
+                        usedEdgeFlags(edge.idNum) = true;
+                        currV = edge.opposingVertex(currV);
+                        unitIncomingVector = ng.makeIncomingUnitVector(currV, edgeStack, span);
+                        lookAheadTree = maxCosineTree;
+                    end
+                    % Determine if the path ends at a cell body
+                    currCellBody = ng.vertexattujbody{currV};
+                    if ~isempty(currCellBody)
+                        currCellBody = currCellBody(1);
+                        % Add distance from currV to cell body
+                        [~, distToCurrV] = ng.unitNormalVector(currV, currCellBody);
+                        pathLength = pathLength + distToCurrV;
+                    else
+                        curCellBody = 0;
+                    end
+                    p = Path(pathLength, edgeStack, v, currV, nbi, currCellBody);
+                    pathStack.push(p);
+                end
+            end
+        end
+
+        function rateEdges(ng, tr, v0, dist, incomingUnitVector, initialUsedEdgeFlags)
+            persistent usedEdgeFlags
+            if nargin == 6
+                usedEdgeFlags = initialUsedEdgeFlags;
+            end
+
+            dft(tr, v0, dist, tr.getNode(), [v0]);
+
+            function dft(t, v, remainingDist, prevEdge, visited)
+                % Assume edge stored in node of t is already traversed
+                if t.isLeaf() && ~t.isExpanded()
+                    edgeCA = ng.unusedEdges(v, usedEdgeFlags);
+                    numEdges = numel(edgeCA);
+                    for i = numEdges:-1:1
+                        t.setChild(i, Tree(edgeCA{i}));
+                    end
+                    t.setExpanded(true);
+                end
+if false % v0 == 1637   %2040
+    rootEdge = t.getNode();
+    if isempty(rootEdge)
+        fprintf('[dft] []  %4.2f v: ', remainingDist);
+    else
+        fprintf('[dft] (%d)  %4.2f v: ', rootEdge.idNum, remainingDist);
+    end
+    for i = 1:numel(visited)
+        fprintf('%d ', visited(i));
+    end
+    fprintf('  next: ');
+    for i = 1:t.numChildren()
+        t2 = t.getChild(i);
+        edge = t2.getNode();
+        if v == edge.vertices(1)
+            nextV = edge.vertices(2);
+        elseif v == edge.vertices(2)
+            nextV = edge.vertices(1);
+        else
+            error('[dft] unmatched vertex');
+        end
+        fprintf('%d (%d %4.2f)  ', nextV, edge.idNum, edge.distance);
+    end
+    fprintf('\n');
+end
+                if t.isLeaf()
+                    % End of the line; compute outgoing unit vector and cosine
+                    if v == v0
+                        % Unable to make a unit vector when v == v0, so use
+                        % previous pixel if it exists
+                        if isempty(prevEdge) || numel(prevEdge.pathIdxList) < 2
+                            cosine = -1;
+                        else
+                            idx = prevEdge.endPointNeighbor(v);
+                            [r c] = ind2sub(ng.imageSize, idx);
+                            ouv = ng.makeOutgoingUnitVector(v0, r, c);
+                            cosine = sum(incomingUnitVector .* ouv);
+                        end
+                    else
+                        ouv = ng.makeOutgoingUnitVector(v0, v);
+                        cosine = sum(incomingUnitVector .* ouv);
+                    end
+                    t.setValue(cosine);
+                    assert(~(isnan(cosine) || isinf(cosine)), 'cosine is nan or inf at vertex %d', v)
+                    return;
+                end
+
+                maxCosine = -Inf;
+                for i = 1:t.numChildren
+                    t2 = t.getChild(i);
+                    edge = t2.getNode();
+                    if edge.distance >= remainingDist
+                        [r c] = ng.followEdges(v, Stack(edge), remainingDist);
+                        ouv = ng.makeOutgoingUnitVector(v0, r, c);
+                        cosine = sum(incomingUnitVector .* ouv);
+                        t2.setValue(cosine);
+                    else
+                        % Use edge and recur
+                        v2 = edge.opposingVertex(v);
+                        usedEdgeFlags(edge.idNum) = true;
+                        dft(t2, v2, remainingDist - edge.distance, edge, [visited v2]);
+                        usedEdgeFlags(edge.idNum) = false;
+                        cosine = t2.getValue();
+                    end
+                    maxCosine = max(cosine, maxCosine);
+                end
+                t.setValue(maxCosine);
+            end
+
+        end
+
+%        function walk(ng, lookAheadTree, v, dist, edgeStack, usedEdgeFlags)
+%            incomingUnitVector = ng.makeIncomingUnitVector(v, edgeStack, dist);
+%            usedEdgeFlags = false(size());
+%            % Add cosine values to each child of the root of tr
+%            function depthFirstTraversal(tr, v, remainingDist)
+%                % Assume root edge has not yet been traversed and starts at v
+%                edge = tr.getNode();
+%                if edge.dist >= remainingDist
+%                    % Edge contains point for computing cosine of outgoing
+%                    % vector
+%                    [r c] = ng.followEdges(v, Stack(edge), remainingDist);
+%                    outgoingUnitVector = ng.makeOutgoingUnitVector(v, r, c);
+%                    % Cosine is dot product of unit vectors
+%                    cosine = sum(incomingUnitVector .* outgoingUnitVector);
+%                    % Store cosine in tree so that it can be compared to other
+%                    % edges
+%                    tr.setValue(cosine);
+%                else
+%                    remainingDist = remainingDist - edge.dist;
+%                    usedEdgeFlags(edge.idNum) = true;
+%                    % New vertex is at other end of edge
+%                    v2 = edge.opposingVertex(v);
+%                    % Expand tree if necessary and possible
+%                    if tr.isLeaf() && ~tr.isExpanded
+%                        % Expand the leaf
+%                        edgeCA = ng.unusedEdges(v2, usedEdgeFlags);
+%                        numUnusedEdges = numel(edgeCA);
+%                        if numUnusedEdges > 0
+%                            for i = numel(edgeCA):-1:1
+%                                tr.setChild(i, Tree(edgeCA{i}));
+%                            end
 %                        end
+%                        tr.setExpanded(true);
 %                    end
+%                    % If still a leaf after expansion, then we have reached an
+%                    % end point
+%                    if tr.isLeaf()
+%                        outgoingUnitVector = ng.makeOutgoingUnitvector(v, v2);
+%                        % Cosine is dot product of unit vectors
+%                        cosine = sum(incomingUnitVector .* outgoingUnitVector);
+%                        % Store cosine in tree so that it can be compared to
+%                        % other edges
+%                        tr.setValue(cosine);
+%                    else
+%                        % Recur on subtrees and get maximum cosine
+%                        maxCosine  = -Inf;
+%                        for i = 1:tr.numChildren()
+%                            tr2 = tr.getChild(i);
+%                            edge = tr2.getNode();
+%                            depthFirstTraversal(tr2, v2, remainingDist);
+%                            maxCosine = max(maxCosine, tr2.getValue());
+%                        end
+%                        tr.setValue(maxCosine);
+%                    end
+%                    usedEdgeFlags(edge.idNum) = false;
 %                end
 %            end
 %        end
+%        function walk(ng, lookAheadTree, v, dist, edgeStack, usedEdgeFlags)
+%            incomingUnitVector = ng.makeIncomingUnitVector(v, edgeStack, dist);
+%            % Add cosine values to each child of the root of tr
+%            function depthFirstTraversal(tr, v, remainingDist)
+%                % Assume root edge has already been traversed
+%                % (and marked as such)
+%                if tr.isLeaf() && ~tr.isExpanded
+%                    % Expand the leaf
+%                    edgeCA = ng.unusedEdges(v, usedEdgeFlags);
+%                    numUnusedEdges = numel(edgeCA);
+%                    if numUnusedEdges > 0
+%                        for i = numel(edgeCA):-1:1
+%                            tr.setChild(i, Tree(edgeCA{i}));
+%                        end
+%                    end
+%                    tr.setExpanded(true);
+%                end
+%                if tr.isLeaf()
+%
+%                end
+%                for i = 1:tr.numChildren()
+%                    tr2 = tr.getChild(i);
+%                    edge = tr2.getNode();
+%                    if edge.dist > remainingDist
+%                    [r c] = ng.followEdges(v, Stack(edge), remainingDist);
+%                    depthFirstTraversal(tr2, remainingDist - edge.dist);
+%                end
+%                maxCosine  = -Inf;
+%                for i = 1:tr.numChildren()
+%                    tr2 = tr.getChild(i);
+%                    maxCosine = max(maxCosine, tr2.getValue());
+%                    end
+%                end
+%                tr.setValue(maxCosine)
+%                if ~isempty(edge)
+%                    usedEdgeFlag(edge.idNum) = false;
+%                end
+%            end
+%
+%        end
+
+
+        function [r c] = followEdges(ng, v, edgeStack, dist)
+            persistent sqrt2;
+            if isempty(sqrt2)
+                sqrt2 = sqrt(2);
+            end
+            edgeIndex = 1;
+            rc = ng.vertexlocations(v, :);
+            idx = sub2ind(ng.imageSize, rc(1), rc(2));
+            usedEdges = Stack();
+            while dist > 0 && ~edgeStack.empty()
+                edge = edgeStack.pop();
+                usedEdges.push(edge);
+                [first delta last] = edge.pathDirection(idx);
+                if edge.distance <= dist
+                    idx = edge.pathIdxList(last);
+                    dist = dist - edge.distance;
+                    continue;
+                end
+
+		% idx is at the location denoted by first, so start at
+                % first+delta
+                p = first + delta;
+                while dist > 0
+                    idx2 = edge.pathIdxList(p);
+                    p = p + delta;
+                    if isSideAdjacent(idx, idx2, ng.imageSize)
+                        dist = dist - 1;
+                    else
+                        dist = dist - sqrt2;
+                    end
+                    idx = idx2;
+                end
+            end
+            % Replace popped edges
+            while ~usedEdges.empty()
+                edgeStack.push(usedEdges.pop());
+            end
+            [r c] = ind2sub(ng.imageSize, idx);
+        end
 
         function edgeCA = unusedEdges(ng, v, used)
             edgeCA = cell(ng.edgeCountByVertex(v), 1);
@@ -703,6 +1072,7 @@ return;
                     ng.edgeLocator(idx1, idx2) = 0;
                     ng.edgeCountByVertex(v1) = ng.edgeCountByVertex(v1) - 1;
                     ng.edgeCountByVertex(v2) = ng.edgeCountByVertex(v2) - 1;
+
                     if edge.distance > ng.maxSpurLength
                         ng.longEdgeCountByVertex(v1) = ng.longEdgeCountByVertex(v1) - 1;
                         ng.longEdgeCountByVertex(v2) = ng.longEdgeCountByVertex(v2) - 1;
@@ -827,7 +1197,7 @@ return;
             
             % Create a path to let the Path class know how many edges
             % there are
-            Path(0, Stack(), 0, 0, ng.anEdge.numObjects);
+%            Path(0, Stack(), 0, 0, ng.anEdge.numObjects);
         end
 
     function v2 = vertexNeighbor(v1, e)

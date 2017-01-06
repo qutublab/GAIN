@@ -65,6 +65,7 @@ classdef NeuronImageProcessor < handle
         connectedSkeleton
         unconnectedSkeleton
         waitBarFlag
+        timingFlag
         graph
     end
     methods
@@ -120,6 +121,10 @@ classdef NeuronImageProcessor < handle
             writeOutput(nip, fileName, outputDir);
         end
         
+        function resetState(nip)
+            nip.state = NIPState.Ready;
+        end
+
         function processImage(nip, parameters, steps)
             nip.parameters = parameters;
             nip.processParameterUpdates = false;
@@ -129,10 +134,7 @@ classdef NeuronImageProcessor < handle
                 steps = Inf;
             end
             while nip.state ~= NIPState.Done & stepCount < steps
-                tstart = tic;
                 status = nip.next();
-                et = toc(tstart);
-                fprintf('State=%s   %f seconds\n', char(nip.getState()), et);
                 if ~isempty(status)
                     error(status);
                 end
@@ -168,39 +170,63 @@ classdef NeuronImageProcessor < handle
             end
             switch nip.state
                 case NIPState.Ready
+                    tstart = tic;
                     status = nip.readImageFile();
+                    elapsedTime = toc(tstart);
                 case NIPState.ReadImages
-                    if isempty(nip.nucleusImage)
-                        status = nip.segmentCellBodies();
-                    else
-                        status = nip.firstNucleusSegmentation();
-                    end
+                    tstart = tic;
+                    status = nip.firstNucleusSegmentation();
+                    elapsedTime = toc(tstart);
                 case NIPState.SegmentedNucleusImageOnce
+                    tstart = tic;
                     status = nip.secondNucleusSegmentation();   
+                    elapsedTime = toc(tstart);
                 case NIPState.SegmentedNucleusImageTwice
+                    tstart = tic;
                     status = nip.openNucleusMask();
+                    elapsedTime = toc(tstart);
                 case NIPState.OpenedNucleusMask
+                    tstart = tic;
                     status = nip.identifyNucleusClusters();
+                    elapsedTime = toc(tstart);
                 case NIPState.IdentifiedNucleusClusters
+                    tstart = tic;
                     status = nip.calculateNominalMeanNucleusArea();
+                    elapsedTime = toc(tstart);
                 case NIPState.CalculatedNominalMeanNucleusArea
-                    status = nip.calculateMinNucleusArea();                    
+                    tstart = tic;
+                    status = nip.calculateMinNucleusArea();
+                    elapsedTime = toc(tstart);
                 case NIPState.CalculatedMinNucleusArea
+                    tstart = tic;
                     status = nip.segmentCellBodies();
+                    elapsedTime = toc(tstart);
                 case NIPState.SegmentedCells
+                    tstart = tic;
                     status = nip.isolateCellBodies();
+                    elapsedTime = toc(tstart);
                 case NIPState.SeparatedBodiesFromNeurites
+                    tstart = tic;
                     status = nip.resegmentNeurites();
+                    elapsedTime = toc(tstart);
                 case NIPState.ResegmentedNeurites
+                    tstart = tic;
                     status = nip.resegmentNeuriteEdges();
+                    elapsedTime = toc(tstart);
                 case NIPState.ResegmentedNeuriteEdges
+                    tstart = tic;
                     status = nip.closeNeuriteMask();
+                    elapsedTime = toc(tstart);
                 case NIPState.ClosedNeuriteMask
+                    tstart = tic;
                     status = nip.skeletonizeNeurites();
+                    elapsedTime = toc(tstart);
                     if isempty(status)
                         status = nip.createNeuriteGraph();
+                        elapsedTime(2) = toc(tstart);
                         if isempty(status)
                             status = nip.findLongPaths();
+                            elapsedTime(3) = toc(tstart);
                         end
                     end
 %                case NIPState.CreatedGraph
@@ -210,12 +236,22 @@ classdef NeuronImageProcessor < handle
                     status = '';
                 otherwise error('[NeuronImageProcessor.next] Unexpected state: %s', char(nip.state));
             end
-            if isempty(status)
-                % If Nucleus image is not present, skip processing steps
-                if nip.state == NIPState.ReadImages && isempty(nip.nucleusImage)
-                        nip.state = NIPState.CalculatedMinNucleusArea;
-                else
-                    nip.state = NIPState(nip.state + 1);
+            if isempty(status) && nip.state ~= NIPState.Done
+                nip.state = NIPState(nip.state + 1);
+                if nip.timingFlag
+                    fprintf('State=%s: ', char(nip.state));
+                    if numel(elapsedTime) == 1
+                        fprintf('%f seconds\n', elapsedTime);
+                    else
+                        fprintf('%f seconds;', elapsedTime(end));
+                        prevSum = 0;
+                        for t = 1:numel(elapsedTime)
+                            et = elapsedTime(t) - prevSum;
+                            fprintf(' %f', et);
+                            prevSum = prevSum + et;
+                        end
+                        fprintf('\n');
+                    end
                 end
             end
         end
@@ -288,6 +324,8 @@ classdef NeuronImageProcessor < handle
                             status = 'File images are not the same size';
                             return;
                         end
+                    else
+                        status = 'Image file does not contain 2 images';
                     end
                 end
             catch E
@@ -570,7 +608,7 @@ classdef NeuronImageProcessor < handle
             nip.thirdConnectedNeuriteMask = imreconstruct(imdilate(nip.openedCellBodyMask, true(3)), nip.thirdNeuriteMask);
             nip.thirdUnconnectedNeuriteMask = nip.thirdNeuriteMask & ~nip.thirdConnectedNeuriteMask;
             
-            
+
 %             occupiedECB = imreconstruct(nip.openedCellBodyMask, nip.extendedCellBodyMask);
 % %             b = imopen(filledEdges2 | occupiedECB, strel('disk', nip.parameters.neuriteRemovalDiskRadius, 0));
 %             n = filledEdges2 & ~occupiedECB;
@@ -586,6 +624,10 @@ classdef NeuronImageProcessor < handle
 %             figure, imshow(cat(3, r, g, b));
 
 
+%nip.thirdNeuriteMask = nip.secondNeuriteMask;
+%nip.thirdConnectedNeuriteMask = nip.secondConnectedNeuriteMask;
+%nip.thirdUnconnectedNeuriteMask = nip.secondUnconnectedNeuriteMask;
+            
 
         end
         
@@ -614,13 +656,19 @@ classdef NeuronImageProcessor < handle
         
         function status = closeNeuriteMask(nip)
             status = '';
+            % Close only neurite sections outside of the extended cell body
+            % mask
+	    closableNeurites = nip.thirdNeuriteMask & ~nip.extendedCellBodyMask;
+            closedNeurites = imclose(closableNeurites, strel('disk', nip.parameters.tujClosingDiskRadius, 0));
+            nip.closedNeuriteMask = nip.thirdNeuriteMask | closedNeurites;
 
-            nip.closedNeuriteMask = imclose(nip.thirdNeuriteMask, strel('disk', nip.parameters.tujClosingDiskRadius, 0));
+%            nip.closedNeuriteMask = imclose(nip.thirdNeuriteMask, strel('disk', nip.parameters.tujClosingDiskRadius, 0));
 
-            nip.closedConnectedNeuriteMask = imreconstruct(nip.secondConnectedNeuriteMask, nip.closedNeuriteMask);
+            nip.closedConnectedNeuriteMask = imreconstruct(nip.thirdConnectedNeuriteMask, nip.closedNeuriteMask);
             nip.closedUnconnectedNeuriteMask = nip.closedNeuriteMask & ~nip.closedConnectedNeuriteMask;
 %            nip.connectedNeuriteMask = imreconstruct(nip.openedCellBodyMask, M) & ~nip.firstCellMask;
 %            nip.unconnectedNeuriteMask = M & ~(nip.openedCellBodyMask | nip.connectedNeurites);
+
         end
 
         function status = skeletonizeNeurites(nip)
@@ -632,7 +680,7 @@ classdef NeuronImageProcessor < handle
         
 	function status = createNeuriteGraph(nip)
             status = '';
-            nip.graph = createGraph(nip.skeleton, nip.branchPoints, nip.endPoints, nip.cellBodyNumberGrid, nip.parameters.neuriteRemovalDiskRadius);
+            nip.graph = createGraph(nip.skeleton, nip.branchPoints, nip.endPoints, nip.cellBodyNumberGrid, nip.parameters.neuriteRemovalDiskRadius*1.5);
             nip.graph.removeSpurs4();
             nip.graph.recordEdgeCount();
         end
@@ -829,10 +877,14 @@ classdef NeuronImageProcessor < handle
             nip.waitBarFlag = flag;
         end
 
+        function showTiming(nip, flag)
+            nip.timingFlag = flag;
+        end
+
 	function rgb = getResultsImage(nip)
             cellBodyBorder = nip.openedCellBodyMask & ~imerode(nip.openedCellBodyMask, true(3));
-            connectedSkeleton = imdilate(nip.getConnectedNeuriteSkeleton, true(3));
-            unconnectedSkeleton = imdilate(nip.getUnconnectedNeuriteSkeleton, true(3));
+            connectedSkeleton = imdilate(nip.getConnectedNeuriteSkeleton, true(1));
+            unconnectedSkeleton = imdilate(nip.getUnconnectedNeuriteSkeleton, true(1));
             nbdArr = nip.getCellBodyData;
             longPathSkeleton = false(size(cellBodyBorder));
             for n = 1:numel(nbdArr)
@@ -846,29 +898,36 @@ classdef NeuronImageProcessor < handle
                     end
                 end
             end
-            longPathSkeleton = imdilate(longPathSkeleton, true(3)) & ~nip.getOpenedCellBodyMask;
+            longPathSkeleton = imdilate(longPathSkeleton, true(1)) & ~nip.getOpenedCellBodyMask;
+
+
+all = cellBodyBorder | connectedSkeleton | unconnectedSkeleton | longPathSkeleton;
 
             red = nip.cellImage;
             green = nip.cellImage;
             blue = nip.cellImage;
 
-            red(cellBodyBorder) = 1;
-            green(cellBodyBorder) = 0;
-            blue(cellBodyBorder) = 0;
+%red(all) = 0;
+%green(all) = 0;
+%blue(all) = 0;
 
-            red(connectedSkeleton) = 0;
-            green(connectedSkeleton) = 0;
+            red(cellBodyBorder) = 1;
+            green(cellBodyBorder) = 0; %
+            blue(cellBodyBorder) = 0;  %
+
+            red(connectedSkeleton) = 0;   %
+            green(connectedSkeleton) = 0; %
             blue(connectedSkeleton) = 1;
 
             % Set long paths to green after connected skeleton is set to blue
             % because long paths are a subset of connected skeleton
-            red(longPathSkeleton) = 0;
+            red(longPathSkeleton) = 0;  %
             green(longPathSkeleton) = 1;
-            blue(longPathSkeleton) = 0;
+            blue(longPathSkeleton) = 0; %
 
             red(unconnectedSkeleton) = 1;
             green(unconnectedSkeleton) = 1;
-            blue(unconnectedSkeleton) = 0;
+            blue(unconnectedSkeleton) = 0; %
 
             rgb = cat(3, red, green, blue);
 
@@ -881,6 +940,7 @@ classdef NeuronImageProcessor < handle
                 color = [1 0.5 1];
                 rgb = overLayText(rgb, label, [row col], heightInPixels, color);
             end
+
         end
 
 

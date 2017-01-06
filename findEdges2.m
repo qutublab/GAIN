@@ -345,6 +345,12 @@ end
 edges = edges(1:edgeIdx);
 maxVVEdgeCount = max(vvEdgeCount(:));
 
+% Renumber edge idNums to coincide with index in edges cell array
+for i = 1:numel(edges)
+    edges{i}.idNum = i;
+end
+
+
 end
 
 % Assume that kArr is sorted. Arguments branchPoint and endPoint are arrays of
@@ -546,7 +552,7 @@ endVertex = vertexIdMap(i);
 if startVertex == 0 && endVertex ~= 0
     error('[findEdges2.findPath] Path ended at a vertex but did not start at a vertex');
 end
-edgeLength = sideAdjacencyCount + (sqrt(2) + cornerAdjacencyCount);
+edgeLength = sideAdjacencyCount + (sqrt(2) * cornerAdjacencyCount);
 edge = EdgeInfo(edgeLength, path, [startVertex, endVertex]);
 if startVertex ~= 0  && endVertex ~= 0
     completeEdges = {edge};
@@ -685,3 +691,17 @@ vertexStatus = (neighborCount ~= 2);
 
 end
 
+function len = computeEdgeLength(e, sz)
+    sqrt2 = sqrt(2);
+    a = e.pathIdxList(1);
+    len = 0;
+    for i = 2:numel(e.pathIdxList)
+        b = e.pathIdxList(i);
+        if isSideAdjacent(a, b, sz)
+            len = len + 1;
+        else
+            len = len + sqrt2;
+        end
+        a = b;
+    end
+end

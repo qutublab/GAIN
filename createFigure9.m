@@ -19,6 +19,7 @@ b = T;
 
 
 % Skeleton of neurites connected to cell bodies
+% (nip.getConnectedNeuriteSkeleton)
 C = imread(connectedFile);
 C = thicken(C);
 r(C) = 0;
@@ -26,6 +27,7 @@ g(C) = 0;
 b(C) = 1;
 
 % Skeleton of neurites not connected to cell bodies
+% (nip.getUnconnectedNeuriteSkeleton)
 U = imread(unconnectedFile);
 U = thicken(U);
 r(U) = 1;
@@ -33,6 +35,7 @@ g(U) = 1;
 b(U) = 0;
 
 % Skeleton of long neurites connected to cell bodies
+% (Derived from long paths in nip.getCellBodyData)
 L = imread(longPathFile);
 L = thicken(L);
 r(L) = 0;
@@ -40,14 +43,14 @@ g(L) = 1;
 b(L) = 0;
 
 % Labeled cell bodies
+% (nip.getCellBodyAllLabeled)
 lblBodies = dlmread(cellLabelFile);
 bodyBorder = makeBorder(lblBodies > 0);
 r(bodyBorder) = 1;
 g(bodyBorder) = 0;
 b(bodyBorder) = 0;
 
-rgb = cat(3, r, g, b);
-
+figure, imshow(cat(3, r, g, b));
 
 numLabels = max(lblBodies(:));
 for i = 1:numLabels
@@ -56,11 +59,22 @@ for i = 1:numLabels
     centroidRow = sum(R(:)) / numel(R);
     centroidCol = sum(C(:)) / numel(C);
 %     text(centroidCol, centroidRow, letterLabel(i), 'Color', [1 0 1]);
-    %temp 10.26
-    rgb = insertText(rgb, [centroidCol,centroidRow],letterLabel(i), 'TextColor',[1 0.5 1],'FontSize', 16,'Font', 'LucidaSansDemiBold', 'BoxOpacity',0);
-%     text(centroidCol, centroidRow, letterLabel(i), 'Color', [1 0.5 1], 'FontSize', 16, 'FontWeight', 'bold');
+    text(centroidCol, centroidRow, letterLabel(i), 'Color', [1 0.5 1], 'FontSize', 16, 'FontWeight', 'bold');
 end
-imwrite(rgb,outputFile,'tif','Compression', 'none')
+% Use saveas to include text in image file
+saveas(gcf, outputFile);
+close(gcf);
+% saveas includes a white border; remove it
+I = mat2gray(imread(outputFile));
+NW = I(:, :, 1) ~= 1 | I(:, :, 2) ~= 1 & I(:, :, 3) ~= 1;
+nonWhiteCols = find(any(NW, 1));
+nonWhiteRows = find(any(NW, 2));
+topRow = nonWhiteRows(1);
+bottomRow = nonWhiteRows(end);
+leftColumn = nonWhiteCols(1);
+rightColumn = nonWhiteCols(end);
+I = I(topRow:bottomRow, leftColumn:rightColumn, :);
+imwrite(I, outputFile);
 fprintf('Wrote file %s\n', outputFile);
 end
 
