@@ -58,6 +58,48 @@ classdef EdgeInfo < handle
             end
         end
 
+       function v2 = opposingVertex(e, v)
+           if v == e.vertices(1)
+               v2 = e.vertices(2);
+           else
+               if v == e.vertices(2)
+                   v2 = e.vertices(1);
+               else
+                   error('[EdgeInfo.opposingVertex] vertex %d is not in edge %d', v, e.idNum);
+               end
+           end
+       end
+
+       function [first delta last] = pathDirection(e, idx)
+           if idx == e.pathIdxList(1)
+               first = 1;
+               delta = 1;
+               last = numel(e.pathIdxList);
+           else
+               if idx == e.pathIdxList(end)
+                   first = numel(e.pathIdxList);
+                   delta = -1;
+                   last = 1;
+               else
+                   error('[EdgeInfo.pathDirection] Index %d not at end of edge (%d or %d) ', idx, e.pathIdxList(1), e.pathIdxList(end));
+               end
+           end
+        end
+
+        function idx = endPointNeighbor(e, v)
+            if numel(e.pathIdxList) < 2
+                error('[EdgeInfo.endPointNeighbor] End point has no neighbor');
+            end
+            if v == e.vertices(1)
+                idx = e.pathIdxList(2);
+            else
+                if v == e.vertices(2)
+                    idx = e.pathIdxList(end-1);
+                else
+                    error('[EdgeInfo.endPointNeighbor] Vertex is not an end point');
+                end
+            end
+        end
         
     end
 end

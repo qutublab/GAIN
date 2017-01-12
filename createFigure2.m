@@ -1,77 +1,51 @@
-% CreateFigure2 is a new version of createFigure that writes an output file
-% just once instead of separately saving a figure window to a file and then
-% altering the file.
-
-% Uses images created by processImage.m
+% Uses images created by processImage.m to create Figure 2
 
 function createFigure2(dirName, prefix)
 
-outputFile = [dirName, filesep, 'output2.tif'];
+tujFile = [prefix, '-tuj.tif'];
+firstCellMaskFile = [prefix, '-firstcellmask.tif'];
+secondCellMaskFile = [prefix, '-secondcellmask.tif'];
 
-tujFile = strcat(prefix, '-tuj.tif');
-dapiFile = strcat( prefix, '-dapi.tif');
-cellLabelFile = strcat(prefix, '-cellbodylabel.txt');
-longPathFile = strcat(prefix, '-longPathSkel.tif');
-shortPathFile = strcat(prefix, '-shortPathSkel.tif');
-unconnectedFile = strcat(prefix, '-unconnected.tif');
-connectedFile = strcat(prefix, '-connected.tif');
+T = im2double(imread(tujFile));
+firstCellMask = imread(firstCellMaskFile);
+secondCellMask = imread(secondCellMaskFile);
+
+firstBorder = firstCellMask & ~imerode(firstCellMask, true(3));
+secondBorder = secondCellMask & ~imerode(secondCellMask, true(3)) & ~firstBorder;
+
+borders = firstBorder | secondBorder;
+
+r = T; r(borders) = 0; g = r; b = r;
+
+r(firstBorder) = 1;
+g(secondBorder) = 1;
+b(firstBorder | secondBorder) = 0;
+
+rgb = cat(3, r, g, b);
+
+% Image has 1040 rows and 1388 columns
+r1 = 620; %600; %520;
+r2 = 940; %920; %950; %1040;
+c1 = 100; %90; %70; %50; %20; %1;
+c2 = 545; %550; %560; %570; %600; %650; %694;
 
 
+T = T(r1:r2, c1:c2);
+% Add 100-micron scale bar.  Note that the 100 micron scale bar is 154
+% pixels long and 14 pixels high.
+T(((end-5) - (14 - 1)):(end-5), ((end-5) - (154 - 1)):(end-5)) = 1;
 
-T = mat2gray(imread(tujFile));
-r = T;
-g = T;
-b = T;
+rgb = rgb(r1:r2, c1:c2, :);
 
-% Skeleton of neurites connected to cell bodies
-C = imread(connectedFile);
-C = thicken(C);
-r(C) = 0;
-g(C) = 0;
-b(C) = 1;
+outFileA = 'fig2a.tif';
+outFileB = 'fig2b.tif';
 
-% Skeleton of neurites not connected to cell bodies
-U = imread(unconnectedFile);
-U = thicken(U);
-r(U) = 1;
-g(U) = 1;
-b(U) = 0;
+imwrite(T, outFileA, 'tif', 'Compression', 'none');
+fprintf('Wrote file %s\n', outFileA);
 
-% Skeleton of long neurites connected to cell bodies
-L = imread(longPathFile);
-L = thicken(L);
-r(L) = 0;
-g(L) = 1;
-b(L) = 0;
+imwrite(rgb, outFileB, 'tif', 'Compression', 'none');
+fprintf('Wrote file %s\n', outFileB);
 
-% Labeled cell bodies
-lblBodies = dlmread(cellLabelFile);
-bodyBorder = makeBorder(lblBodies > 0);
-r(bodyBorder) = 1;
-g(bodyBorder) = 0;
-b(bodyBorder) = 0;
 
-figure, imshow(cat(3, r, g, b));
-
-numLabels = max(lblBodies(:));
-for i = 1:numLabels
-    M = (lblBodies == i);
-    [R C] = find(M);
-    centroidRow = sum(R(:)) / numel(R);
-    centroidCol = sum(C(:)) / numel(C);
-    text(centroidCol, centroidRow, letterLabel(i), 'Color', [1 0 1]);
 end
 
-I = getimage(gcf);
-%close(gcf);
-imwrite(I, outputFile);
-fprintf('Wrote file %s\n', outputFile);
-end
-
-function B = makeBorder(M)
-B = M & ~imerode(M, true(3));
-end
-
-function M = thicken(M);
-M = imdilate(M, true(2));
-end

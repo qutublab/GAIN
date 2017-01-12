@@ -1,0 +1,11 @@
+dapiThreshFactor1 Inf  %1.000000
+dapiThreshFactor2 Inf  % 1.000000
+nucleusOpenDiskRadius 3
+areaToConvexHullRatio 0.950000
+medianNucleusAdjustmentFactor Inf % 1.000000
+median2MinimumNucleusAreaRatio Inf % 2.000000
+tujThreshFactor1 Inf % 1.000000
+neuriteRemovalDiskRadius 5
+tujThreshFactor2 Inf % 1.000000
+tujThreshFactor3 Inf % 1.500000
+tujClosingSquareSide 3
