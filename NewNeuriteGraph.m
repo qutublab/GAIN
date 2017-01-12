@@ -720,7 +720,6 @@ end
         end
 
         function pathStack = allWalksFromCellBody(ng, nbi, span)
-edgeCount1637 = ng.edgeCountByVertex(1637);
             pathStack = Stack();
             usedEdgeFlags = false(size(ng.edgeTable));
             for v = 1:ng.numvertices
@@ -753,7 +752,6 @@ edgeCount1637 = ng.edgeCountByVertex(1637);
 if ~isa(maxCosineTree, 'Tree')
 fprintf('*****  v=%d\n', v);
 fprintf('*****  currV=%d\n', currV);
-fprintf('*******   vertex 1637 has %d edges\n', edgeCount1637);
 lookAheadTree.getNode()
 cosine
 maxCosineTree

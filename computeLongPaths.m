@@ -8,7 +8,7 @@ if showWaitBar
     h = waitbar(0, sprintf('Processing cell cluster %d of %d', 0, numClusters));
 end
 timing = zeros(numel(neuronBodyDataArr), 1);
-fprintf('[computeLongPaths] %d cell body clusters\n', numel(neuronBodyDataArr));
+%fprintf('[computeLongPaths] %d cell body clusters\n', numel(neuronBodyDataArr));
 %for d = 7    %1:numel(neuronBodyDataArr)  byron
 %for d = 12     %1:numel(neuronBodyDataArr)
 for d = 1:numel(neuronBodyDataArr)
@@ -77,11 +77,11 @@ if showWaitBar & ishandle(h)
 end
 
 numTimings = numel(timing);
-fprintf('[computeLongPaths] minimum time=%f (of %d)\n', min(timing), numTimings);
+%fprintf('[computeLongPaths] minimum time=%f (of %d)\n', min(timing), numTimings);
 [mx mxIndex] = max(timing);
-fprintf('[computeLongPaths] maximum time=%f for %dth element (of %d)\n', max(timing), mxIndex, numTimings);
-fprintf('[computeLongPaths] mean time=%f (of %d)\n', mean(timing), numTimings);
-fprintf('[computeLongPaths] median time=%f (of %d)\n', median(timing), numTimings);
+%fprintf('[computeLongPaths] maximum time=%f for %dth element (of %d)\n', max(timing), mxIndex, numTimings);
+%fprintf('[computeLongPaths] mean time=%f (of %d)\n', mean(timing), numTimings);
+%fprintf('[computeLongPaths] median time=%f (of %d)\n', median(timing), numTimings);
 
 
 
