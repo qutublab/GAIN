@@ -59,7 +59,7 @@ end
 rgbHeight = size(rgb,1);
 rgbWidth = size(rgb,2);
 if col+width-1 > rgbWidth
-    fprintf('here\n')
+    %fprintf('here\n')
     character = character(:, 1:(rgbWidth-col+1));
     width = rgbWidth-col+1;
 end
